@@ -187,6 +187,9 @@ class ImageDeskewConfig(BaseModel):
     # Weighted image rotation (#092): R = R_img exp(w log(R_img^T R_cv)), R_cv the rotation of the last ICP motion
     # (constant velocity), for BOTH uses of the image motion.  0 = the image rotation as measured (every result before #092).
     rotation_cv_weight: float = 0.0
+    # Deskew source (#103): "image" = the image motion (every result before); "cv" = KISS's constant velocity (last_delta), the image motion
+    # then only the ICP start (and two starts).  Where the image fails, "cv" is exactly KISS.
+    deskew_from: Literal["image", "cv"] = "image"
     # Plausibility gate (#054), each None = off (every result before #054): an image motion is rejected when fewer
     # than gate_min_matches matches support it, when it rotates more than gate_max_rotation_deg in one scan, or when its
     # rotation differs from the last accepted one by more than gate_max_rotation_change_deg.  blenheim-palace-02 (#053):

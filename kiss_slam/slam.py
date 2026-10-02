@@ -805,11 +805,14 @@ class KissSLAM:
         """
         odo = self.odometry
         M = self._image_motion(frame, timestamps, intensity, ring)
+        cv_deskew = self.image_cfg.deskew_from == "cv"   # #103: deskew with constant velocity (as KISS), the image only as the ICP start
         if M is None:                         # no image motion: no deskew (#012); ICP start per image_deskew.fallback
-            delta = np.eye(4)
-            start = odo.last_delta if self.image_cfg.fallback == "constant_velocity" else delta
+            delta = odo.last_delta if cv_deskew else np.eye(4)
+            start = odo.last_delta if (self.image_cfg.fallback == "constant_velocity" or cv_deskew) else delta
         else:
             delta = M if self.image_cfg.use_for_deskew else np.eye(4)      # False: ICP start only, no deskew (#082)
+            if cv_deskew:
+                delta = odo.last_delta
             if self.image_cfg.use_for_deskew and self.image_cfg.deskew_rotation == "cv":   # hybrid deskew (#086)
                 delta = M.copy()
                 delta[:3, :3] = odo.last_delta[:3, :3]
