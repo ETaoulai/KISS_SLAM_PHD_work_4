@@ -263,6 +263,9 @@ class SlamPipeline(OdometryPipeline):
                       f"constant-velocity start kept in {self.kiss_slam.n_two_start_cv_won}; extra time "
                       f"{self.kiss_slam.two_start_seconds:.1f} s of {total:.1f} s in process_scan "
                       f"({100 * self.kiss_slam.two_start_seconds / max(total, 1e-9):.1f} %)")
+            if self.kiss_slam.n_validate_forced:
+                print(f"KissSLAM| range validation (#109): {self.kiss_slam.n_validate_forced} scans sent to the two-start choice "
+                      f"(image vs range rotation > {self.kiss_slam.image_cfg.validate_k} x running median)")
             est = self.kiss_slam._image_motion_est
             if est is not None and getattr(est, "range_motion", None) == "fallback":
                 print(f"KissSLAM| range image used for {est.n_range_used} scans where the intensity motion failed")

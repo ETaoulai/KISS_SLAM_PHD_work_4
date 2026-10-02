@@ -4,7 +4,7 @@
     python scripts/run_ncd.py <arm> <sequence> <out dir> [n_scans] [--config=<yaml>] [--seed=N] [--parallel]
                               [--topic=/os_cloud_node/points] [--intensity-scale=0.249] [--diag]
                               [--parts=full|translation|rotation] [--rot-smooth=k] [--rot-cv=w] [--save-frames=<voxel m>] [--save-fraction=f]
-                              [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate]
+                              [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate|validate] [--validate-k=3] [--two-start-always] [--voxel=auto]
                               [--rotation-weight=100] [--save-failed]
                               [--normalise=gain|gain_clahe] [--panorama-width=2048|auto] [--panorama-up=4|auto] [--image-start=false]
                               [--stuck=none|<m>] [--sigma=adaptive|<m>] [--deskew=false]
@@ -79,11 +79,27 @@ def main():
         from kiss_slam.tools.ncd_pcd import NewerCollege2020Pcd
         dataset = NewerCollege2020Pcd(seq)
 
+    auto_voxel = None
+    if opts.get("voxel") == "auto":                          # #110: voxel from the sensor and the scene, v = sqrt(20) x median range x point spacing
+        import numpy as _np
+        xyz0 = _np.asarray(dataset[0][0], dtype=float)
+        dataset.reset()
+        r = _np.linalg.norm(xyz0, axis=1); xyz0 = xyz0[r > 1.0]; r = r[r > 1.0]
+        az = _np.degrees(_np.arctan2(xyz0[:, 1], xyz0[:, 0])); el = _np.degrees(_np.arctan2(xyz0[:, 2], _np.linalg.norm(xyz0[:, :2], axis=1)))
+        area = (_np.percentile(az, 99.5) - _np.percentile(az, 0.5)) * (_np.percentile(el, 99.5) - _np.percentile(el, 0.5))
+        spacing = _np.radians(_np.sqrt(area / len(xyz0)))
+        auto_voxel = float(_np.clip(_np.sqrt(20.0) * _np.median(r) * spacing, 0.05, 2.0))
+        print(f"run_ncd| voxel auto: {auto_voxel:.3f} m (median range {_np.median(r):.1f} m, point spacing {_np.degrees(spacing):.3f} deg, "
+              f"{len(xyz0)} points, FoV {area:.0f} deg2)", flush=True)
+
     # Options as config fields, so they also reach the image-motion worker process.
     load_config = pipeline.load_config
 
     def load_with_overrides(path):
         config = load_config(path)
+        if auto_voxel is not None:                           # #110
+            config.odometry.mapping.voxel_size = auto_voxel
+            config.local_mapper.voxel_size = auto_voxel
         config.image_deskew.seed = int(opts.get("seed", 0))
         config.image_deskew.parallel = "--parallel" in sys.argv
         config.image_deskew.intensity_scale = float(opts.get("intensity-scale", 255.0 / 1024.0))
@@ -153,6 +169,10 @@ def main():
             config.image_deskew.guided_matching_window = None if v.lower() in ("none", "off") else float(v)
         if "guided-predict" in opts:                             # shift | motion: centre of the guided window (#089)
             config.image_deskew.guided_prediction = opts["guided-predict"]
+        if "validate-k" in opts:                                 # #109: range validation threshold (x running median)
+            config.image_deskew.validate_k = float(opts["validate-k"])
+        if "--two-start-always" in sys.argv:                     # #109: every scan from all starts (unconditional floor)
+            config.image_deskew.two_start_always = True
         if "--two-start-kiss" in sys.argv:                        # second start / image-failure fallback = KISS (CV deskew + start) (#108)
             config.image_deskew.two_start_kiss = True
         if "deskew-from" in opts:                                # image | cv: deskew from constant velocity, image only as ICP start (#103)

@@ -193,6 +193,12 @@ class ImageDeskewConfig(BaseModel):
     # #108: the "cv" start of the two starts, and the fallback where the image motion fails, become KISS itself (constant-velocity deskew
     # AND start) instead of "no deskew" - per scan the method then always has the KISS registration as an option.  False = every result before.
     two_start_kiss: bool = False
+    # #109: per-scan validation of the image motion by the range-image motion (range_motion "validate": computed on every scan, also the
+    # fallback): when their rotations differ by more than validate_k x the running median of that difference (last 200 scans, at least
+    # 20 seen), the scan goes through the two-start choice (image / range / cv) even below two_start_deg.  Scale-free: no angle per sensor.
+    validate_k: float = 3.0
+    # #109: register EVERY scan from all starts and keep the best map fit (the unconditional floor; ~2x ICP).  False = every result before.
+    two_start_always: bool = False
     # Plausibility gate (#054), each None = off (every result before #054): an image motion is rejected when fewer
     # than gate_min_matches matches support it, when it rotates more than gate_max_rotation_deg in one scan, or when its
     # rotation differs from the last accepted one by more than gate_max_rotation_change_deg.  blenheim-palace-02 (#053):
@@ -215,7 +221,7 @@ class ImageDeskewConfig(BaseModel):
     two_start_margin: float = 0.0
     # Motion from the RANGE panorama too (#058; log range + CLAHE, SURF at range_hessian): "fallback" = used when the
     # intensity motion fails or is rejected; "candidate" = an extra starting point for the two-start registration.
-    range_motion: Optional[Literal["fallback", "candidate"]] = None
+    range_motion: Optional[Literal["fallback", "candidate", "validate"]] = None
     # Intensity of the panorama (#075): "none" = intensity x intensity_scale (every result before #075); "gain" = per scan,
     # scaled so its 99th percentile is 255 (no per-sensor scale; Hilti failures 447 -> 60 on UZH); "gain_clahe" = gain +
     # local contrast equalisation.  Panorama columns: None = 1024 (every result before #075); 2048 = the Hilti Ouster's own.

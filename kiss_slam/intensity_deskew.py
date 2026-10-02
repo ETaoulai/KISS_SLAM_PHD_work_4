@@ -1053,7 +1053,7 @@ class ScanMotionEstimator:
             _, Mr, nr = match_motion(prev_r, cur_r, self.period, self.range_rng, self.bf, self.model, self.subpixel,
                                      self.stuck_min, self.floor_only, self.elev, self.range_)
             self.last_range_motion = Mr
-            if self.range_motion == "fallback" and M is None and Mr is not None:
+            if self.range_motion in ("fallback", "validate") and M is None and Mr is not None:   # #109 validate: eager + fallback
                 self.n_range_used += 1
                 return Mr, nr
         return M, n

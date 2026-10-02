@@ -352,6 +352,8 @@ class KissSLAM:
         self._motion_pool = None           # image_deskew.parallel: worker process running the estimator
         self._motion_futures = deque()     # motions submitted to it, oldest first
         self._rotvec_history = []          # image_deskew.rotation_smoothing (#047)
+        self._validate_hist = []           # #109: image vs range rotation differences (running median)
+        self.n_validate_forced = 0
         self.n_two_start = 0                # image_deskew.two_start_deg: scans registered twice (#057)
         self.n_two_start_cv_won = 0         # ... of which the constant-velocity start fitted better
         self.two_start_log = []             # one dict per such scan (#058): fits of every start, which was kept
@@ -413,7 +415,7 @@ class KissSLAM:
                     surf_hessian=self.image_cfg.surf_hessian_threshold,
                     surf_upright=self.image_cfg.surf_upright,
                 )
-                if self.image_cfg.parallel and self.image_cfg.range_motion == "candidate":
+                if self.image_cfg.parallel and self.image_cfg.range_motion in ("candidate", "validate"):
                     raise ValueError("image_deskew.range_motion = 'candidate' needs parallel = false (#058)")
                 if self.image_cfg.parallel:
                     # "spawn": a fork would copy the parent's TBB / OpenCV thread state.  The worker
@@ -847,14 +849,23 @@ class KissSLAM:
             # constant velocity (no deskew).  Registered again only when some pair disagrees by more than two_start_deg.
             cands = {"image": (M, M)}
             Mr = self._image_motion_est.last_range_motion if (self._image_motion_est is not None and
-                                                              self.image_cfg.range_motion == "candidate") else None
+                                                              self.image_cfg.range_motion in ("candidate", "validate")) else None
             if Mr is not None:
                 cands["range"] = (Mr, Mr)
             cands["cv"] = (odo.last_delta if kiss_floor else np.eye(4), odo.last_delta)   # #108: KISS (CV deskew + CV start)
             rot = lambda A, B: np.degrees(np.arccos(np.clip((np.trace((np.linalg.inv(A) @ B)[:3, :3]) - 1) / 2, -1, 1)))
             starts = [c[1] for c in cands.values()]
             disagree = max(rot(a, b) for i, a in enumerate(starts) for b in starts[i + 1:])
-            if disagree > two:
+            force = self.image_cfg.two_start_always
+            if self.image_cfg.range_motion == "validate" and Mr is not None:     # #109: is the image motion consistent with the range one?
+                d_ir = rot(M, Mr)
+                hist = self._validate_hist
+                if len(hist) >= 20 and d_ir > self.image_cfg.validate_k * float(np.median(hist)):
+                    force = True
+                    self.n_validate_forced += 1
+                hist.append(d_ir)
+                del hist[:-200]
+            if disagree > two or force:
                 results = {"image": (deskewed, source, frame_downsample, initial_guess, new_pose)}
                 for name, (dsk, st) in cands.items():
                     if name != "image":
