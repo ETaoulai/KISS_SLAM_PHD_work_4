@@ -11,8 +11,9 @@
 
 ## Α. Πού είναι η μέθοδος σήμερα (για να ξεκινήσει κανείς)
 
-- **Κώδικας / κλάδοι:** αποθετήριο **`ETaoulai/KISS_SLAM_PHD_work_3`** (remote `origin`, από 29/9): ένας κλάδος, `main` = όλη η δουλειά ως το
-  #080. **Ο `main` δεν αλλάζει απευθείας (ΑΠΟΦΑΣΗ Μ.Τ. 26/9)** — νέα δουλειά σε δικό της κλάδο (τρέχων `rotation_bearing`, 2/10, από τον `after_080`). Οι παλιοί κλάδοι
+- **Κώδικας / κλάδοι:** αποθετήριο **`ETaoulai/KISS_SLAM_PHD_work_4`** (remote `origin`, από 2/10): `main` = όλη η δουλειά ως το #091 (ο κλάδος
+  `rotation_bearing`). **Ο `main` δεν αλλάζει απευθείας (ΑΠΟΦΑΣΗ Μ.Τ. 26/9)** — νέα δουλειά σε δικό της κλάδο (τρέχων `after_091`, 2/10). Το
+  `KISS_SLAM_PHD_work_3` (ως το #080, `after_080`, `rotation_bearing`) είναι το remote `archive3`. Οι παλιοί κλάδοι
   (`after_two_start` → `vertical_drift` → `intensity_norm` → `vertical_constraint` → `fast_fallback`) μένουν στο `KISS_SLAM_PHD_work_2` (remote
   `archive2`). Αντίγραφο για τον Λαζάρου:
   `lazaros-pcvg/Kiss_SLAM`, κλάδος `main-manos_28-09-26` (μόνο fast-forward).
