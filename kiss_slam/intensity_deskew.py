@@ -104,17 +104,24 @@ def native_width(xyz, ts, ring):
     return W if not steps else int(round(360.0 / float(np.median(steps))))
 
 
-def square_upscale(xyz, ring):
-    """Vertical upscaling that makes the panorama pixels square in angle (#093): the median elevation step between adjacent rings
-    over the column width (360 / W deg), rounded, at least 1.  Measured from one scan, so it follows the sensor with no setting:
-    Ouster 128 -> 2, OS1-64 -> 2, Ouster 64 / Hesai QT64 -> 4, OS1-16 -> 6 (the fixed 8 of every result before over-samples most)."""
-    ok = np.isfinite(xyz).all(axis=1) & (np.linalg.norm(xyz, axis=1) > MIN_RANGE)
+def square_upscale(xyz, ring, min_range=5.0):
+    """Vertical upscaling that makes the panorama pixels square in angle (#093): the median elevation step between adjacent rings over
+    the column width (360 / W deg), NOT rounded to an integer - an integer flips between scenes where the ratio is near x.5 (Hesai QT64 at
+    600 columns: 1.5 deg / 0.6 deg = 2.5) - but to a multiple of 1 / rings, so the panorama has a whole number of rows (rings x UP).
+    Ring elevations from points beyond min_range (near points see the beam origin's offset).  Measured from one scan, so it follows the
+    sensor with no setting: Ouster 128 ~2, OS1-64 ~1.5, Hilti Ouster 64 at 2048 columns ~8, Hesai QT64 at 600 ~2.6, OS1-16 ~6."""
+    rng_ = np.linalg.norm(xyz, axis=1)
+    ok = np.isfinite(xyz).all(axis=1) & (rng_ > min_range)
+    if len(np.unique(ring[ok])) < 2:
+        ok = np.isfinite(xyz).all(axis=1) & (rng_ > MIN_RANGE)
     elev = np.degrees(np.arctan2(xyz[ok, 2], np.linalg.norm(xyz[ok, :2], axis=1)))
     r = ring[ok]
     e = np.sort([np.median(elev[r == k]) for k in np.unique(r)])
     if len(e) < 2:
         return UP
-    return max(1, int(round(float(np.median(np.diff(e))) / (360.0 / W))))
+    n_rings = len(np.unique(ring))
+    ratio = float(np.median(np.diff(e))) / (360.0 / W)
+    return max(n_rings, int(round(ratio * n_rings))) / n_rings      # at least 1
 
 
 def incidence_cos(xyz, knn=10):
@@ -223,7 +230,7 @@ def panorama(xyz, ts, inten, ring):
         if v.sum() > 1:
             img[r, ~v] = np.interp(np.where(~v)[0], np.where(v)[0], img[r, v])
     img = np.nan_to_num(img, nan=0.0)
-    big = cv2.resize(np.clip(img, 0, 255).astype(np.uint8), (W, H * UP), interpolation=cv2.INTER_LINEAR)
+    big = cv2.resize(np.clip(img, 0, 255).astype(np.uint8), (W, int(round(H * UP))), interpolation=cv2.INTER_LINEAR)   # UP may be fractional (#093)
     return big, P, T, valid
 
 
@@ -931,7 +938,7 @@ class ScanMotionEstimator:
         if self.auto_up and self.panorama_up is None:          # #093: first scan - set the upscaling once, for the whole run
             global UP
             UP = self.panorama_up = square_upscale(xyz, ring)
-            print(f"ScanMotionEstimator| panorama upscaling auto (square pixels): {UP}", flush=True)
+            print(f"ScanMotionEstimator| panorama upscaling auto (square pixels): {UP:.4f} ({round(UP * len(np.unique(ring)))} rows)", flush=True)
         self.last_reason = None
         if self.intensity_scale != 1.0 and self.intensity_normalisation == "none":
             inten = inten * self.intensity_scale
