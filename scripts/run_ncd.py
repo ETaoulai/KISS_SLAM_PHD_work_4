@@ -57,7 +57,14 @@ def main():
     is_bag = seq.suffix == ".bag" or (seq.is_dir() and any(seq.glob("*.bag")))
     if is_bag:
         from kiss_icp.datasets.rosbag import RosbagDataset
-        dataset = RosbagDataset(seq, opts.get("topic", "/os_cloud_node/points"))
+        from kiss_slam.tools.livox import LivoxRosbag
+        topic = opts.get("topic", "/os_cloud_node/points")
+        if LivoxRosbag.is_livox(seq, topic):                # livox_ros_driver/CustomMsg (#098)
+            if arm != "kiss":
+                sys.exit("Livox (non-repetitive scan): the image motion has no panorama for this sensor yet (open_tasks B.10) - arm kiss only")
+            dataset = LivoxRosbag(seq, topic)
+        else:
+            dataset = RosbagDataset(seq, topic)
     elif (seq / "lidar").is_dir() and (seq / "applanix").is_dir():   # Boreas sequence (#085)
         from kiss_slam.tools.boreas import Boreas
         dataset = Boreas(seq, int(opts.get("first", 0)), int(opts["last"]) if "last" in opts else None)
@@ -160,7 +167,7 @@ def main():
         image_deskew=arm != "kiss",
         image_detector=None if arm == "kiss" else arm,
     )
-    if is_bag:
+    if is_bag and not isinstance(dataset, LivoxRosbag):     # LivoxRosbag records its own header stamps (ROS time, #098)
         # After SlamPipeline installed its reader: record each scan's header stamp on the way through.
         stamps, read = [], dataset.read_point_cloud
 
