@@ -24,11 +24,13 @@
 μεταξύ τμημάτων) και οι σαρώσεις τους (26 560) = οι θέσεις του GT· πεδία σημείων όπως στα bags του 2021 (`t` σχετικός, 0–99.9 ms·
 intensity 0–~1100 → κλίμακα ×255/1024, #041). Hilti: intensity έως ~4500 (p99 443).
 
-## Solid-state: TIERS (2/10, #095)
+## Solid-state: TIERS (2/10, #095) και Hard Point Cloud Localization (2/10, #104)
 
 | Dataset | Ακολουθία | Φάκελος | LiDAR / topic | Διάρκεια | GT | Κατάσταση |
 |---|---|---|---|---|---|---|
 | TIERS multi-lidar ([github](https://github.com/TIERS/tiers-lidars-dataset), MIT, ακαδημαϊκή χρήση) | Indoor02 (`indoor02_sauna_normal_2022-02-21-19-05-17.bag`, 17 974 826 130 B) | `/media/photogrammetry/Extreme SSD/kiss_data_ssd/tiers/indoor02/` (εξωτερικός SSD, exFAT) | Livox Avia `/avia/livox/lidar`, Livox Horizon `/livox/lidar` (`livox_ros_driver/CustomMsg`: x, y, z, reflectivity, tag, line, offset_time ns· IMU `/avia/livox/imu`, `/livox/imu` 200 Hz)· Ouster OS0 `/os_cloud_node/points` (2048 στήλες, 128 rings), OS1 `/os_cloud_nodee/points`, VLP-16 `/velodyne_points` | 42.3 s, 423 σαρώσεις ανά LiDAR | mocap `indoor02_optitrack.csv` (100 Hz· t ns, x y z, 3 γωνίες, qx qy qz qw) και `/vrpn_client_node/UWBTest/pose` | κατέβηκε 2/10, έλεγχος εικόνας #095· όχι ακόμη στο pipeline |
+
+| Hard Point Cloud Localization ([Zenodo 10122133](https://zenodo.org/records/10122133), CC BY 4.0) | outdoor_hard_01 (`outdoor_hard_01a.zip` 1 642 263 643 B + `outdoor_hard_01b.zip` 1 345 802 065 B, MD5 ελεγμένα) | `/media/photogrammetry/Extreme SSD/kiss_data_ssd/hard_pcl_loc/outdoor_hard_01/bags/` (δύο φάκελοι ROS2 sqlite, χωρίς ορισμούς τύπων) | Livox **Mid-360** (360°, μη επαναλαμβανόμενη)· `/livox/points` PointCloud2 (x y z, t uint32 ns, intensity, tag, line 0–3· ~20 000 σημεία), `/livox/lidar` (`livox_ros_driver2/CustomMsg`, χωρίς ορισμό), `/livox/imu` | 684 s, 999 m, βάδισμα 1.64 m/s, **γωνιακή ταχύτητα p95 73, p99 176, max 504 °/s** | `gt/gt/traj_lidar_outdoor_hard_01.txt` (TUM, **πλαίσιο LiDAR**, 10 Hz, ίδιο ρολόι με την επικεφαλίδα· βελτιστοποίηση LiDAR + IMU, όχι ανεξάρτητη μέτρηση) | κατέβηκε 2/10· reader `kiss_slam/tools/ros2bags.py` (#104) |
 
 **Ρολόγια:** οι επικεφαλίδες των LiDAR και των IMU τους έχουν **χρόνο συσκευής** (δευτερόλεπτα από την εκκίνηση, π.χ. 754–766 s), όχι ROS· μόνο το mocap είναι σε ROS χρόνο.
 Κάθε Livox και το IMU του μοιράζονται ρολόι. Μετατροπή σε ROS: + (χρόνος bag − επικεφαλίδα) του πρώτου μηνύματος, μετά αναζήτηση της υπολειπόμενης καθυστέρησης.

@@ -54,10 +54,13 @@ def main():
 
     import kiss_slam.pipeline as pipeline
 
-    is_bag = seq.suffix == ".bag" or (seq.is_dir() and any(seq.glob("*.bag")))
-    if is_bag:
+    from kiss_slam.tools.livox import LivoxRosbag
+    from kiss_slam.tools.ros2bags import Ros2Bags, ros2_bag_dirs
+    is_bag = seq.suffix == ".bag" or (seq.is_dir() and any(seq.glob("*.bag"))) or bool(ros2_bag_dirs(seq))
+    if is_bag and ros2_bag_dirs(seq):                       # ROS2 bags without type definitions, possibly split (#104)
+        dataset = Ros2Bags(seq, opts.get("topic", "/livox/points"))
+    elif is_bag:
         from kiss_icp.datasets.rosbag import RosbagDataset
-        from kiss_slam.tools.livox import LivoxRosbag
         topic = opts.get("topic", "/os_cloud_node/points")
         if LivoxRosbag.is_livox(seq, topic):                # livox_ros_driver/CustomMsg (#098)
             if arm != "kiss" and "motion-file" not in opts:
