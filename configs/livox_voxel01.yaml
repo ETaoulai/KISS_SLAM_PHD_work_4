@@ -1,0 +1,10 @@
+# KISS-SLAM for the Livox solid-state LiDARs (TIERS, #100): the configuration of the paper (KISS-SLAM defaults, as threads4.yaml)
+# with ONLY the voxel at 0.1 m (decision M.T. 2/10, #102; 0.25 m: #100-#101).  With the default 1 m voxel KISS fails on the Livox indoors (#099: per-scan
+# rotation 4.5-6.8 deg off the gyro) - a narrow field of view in a small room leaves too few points for the ICP.
+odometry:
+    mapping:
+        voxel_size: 0.1
+    registration:
+        max_num_threads: 4
+local_mapper:
+    voxel_size: 0.1

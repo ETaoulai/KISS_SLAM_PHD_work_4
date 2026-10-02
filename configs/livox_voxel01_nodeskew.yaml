@@ -1,0 +1,10 @@
+# As livox_voxel025.yaml (#100) with the deskew off: the "KISS without deskew" arm for the Livox (#101).
+odometry:
+    preprocessing:
+        deskew: false
+    mapping:
+        voxel_size: 0.1
+    registration:
+        max_num_threads: 4
+local_mapper:
+    voxel_size: 0.1

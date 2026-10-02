@@ -10,7 +10,7 @@
                               [--stuck=none|<m>] [--sigma=adaptive|<m>] [--deskew=false]
                               [--model=cv|car|ca] [--deskew-rotation=cv] [--redeskew] [--surf-upright | --no-upright] [--surf-hessian=<threshold>]
                               [--bearings=<min range m>] [--guided=<window px>|none] [--guided-predict=shift|motion]
-                              [--sectors=8] [--whiten=<sr>,<saz>,<sel>] [--cross-check] [--detect-scale=0.5]
+                              [--sectors=8] [--whiten=<sr>,<saz>,<sel>] [--cross-check] [--detect-scale=0.5] [--motion-file=<npz>]
 
 sequence: a 2020 sequence dir with raw_format/ouster_scan/*.pcd (kiss_slam/tools/ncd_pcd.py), or a
           .bag file, or a folder whose *.bag are ONE split sequence (read in time order; 2021 bags), or a KITTI raw
@@ -60,8 +60,8 @@ def main():
         from kiss_slam.tools.livox import LivoxRosbag
         topic = opts.get("topic", "/os_cloud_node/points")
         if LivoxRosbag.is_livox(seq, topic):                # livox_ros_driver/CustomMsg (#098)
-            if arm != "kiss":
-                sys.exit("Livox (non-repetitive scan): the image motion has no panorama for this sensor yet (open_tasks B.10) - arm kiss only")
+            if arm != "kiss" and "motion-file" not in opts:
+                sys.exit("Livox (non-repetitive scan): no online image panorama for this sensor yet (open_tasks B.10) - arm kiss, or --motion-file")
             dataset = LivoxRosbag(seq, topic)
         else:
             dataset = RosbagDataset(seq, topic)
@@ -150,6 +150,8 @@ def main():
             config.image_deskew.guided_matching_window = None if v.lower() in ("none", "off") else float(v)
         if "guided-predict" in opts:                             # shift | motion: centre of the guided window (#089)
             config.image_deskew.guided_prediction = opts["guided-predict"]
+        if "motion-file" in opts:                                # precomputed image motions (N, 4, 4), NaN = failed (#101: Livox)
+            config.image_deskew.motion_file = opts["motion-file"]
         if "oracle-deskew" in opts:                              # diagnostic: deskew from ground-truth motion (#086)
             config.image_deskew.deskew_motion_file = opts["oracle-deskew"]
         if "model" in opts:                                      # image motion model: cv | car | ca (#021, #086)
