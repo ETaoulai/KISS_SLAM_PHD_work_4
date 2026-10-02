@@ -24,6 +24,15 @@
 μεταξύ τμημάτων) και οι σαρώσεις τους (26 560) = οι θέσεις του GT· πεδία σημείων όπως στα bags του 2021 (`t` σχετικός, 0–99.9 ms·
 intensity 0–~1100 → κλίμακα ×255/1024, #041). Hilti: intensity έως ~4500 (p99 443).
 
+## Solid-state: TIERS (2/10, #095)
+
+| Dataset | Ακολουθία | Φάκελος | LiDAR / topic | Διάρκεια | GT | Κατάσταση |
+|---|---|---|---|---|---|---|
+| TIERS multi-lidar ([github](https://github.com/TIERS/tiers-lidars-dataset), MIT, ακαδημαϊκή χρήση) | Indoor02 (`indoor02_sauna_normal_2022-02-21-19-05-17.bag`, 17 974 826 130 B) | `/media/photogrammetry/Extreme SSD/kiss_data_ssd/tiers/indoor02/` (εξωτερικός SSD, exFAT) | Livox Avia `/avia/livox/lidar`, Livox Horizon `/livox/lidar` (`livox_ros_driver/CustomMsg`: x, y, z, reflectivity, tag, line, offset_time ns· IMU `/avia/livox/imu`, `/livox/imu` 200 Hz)· Ouster OS0 `/os_cloud_node/points` (2048 στήλες, 128 rings), OS1 `/os_cloud_nodee/points`, VLP-16 `/velodyne_points` | 42.3 s, 423 σαρώσεις ανά LiDAR | mocap `indoor02_optitrack.csv` (100 Hz· t ns, x y z, 3 γωνίες, qx qy qz qw) και `/vrpn_client_node/UWBTest/pose` | κατέβηκε 2/10, έλεγχος εικόνας #095· όχι ακόμη στο pipeline |
+
+**Ρολόγια:** οι επικεφαλίδες των LiDAR και των IMU τους έχουν **χρόνο συσκευής** (δευτερόλεπτα από την εκκίνηση, π.χ. 754–766 s), όχι ROS· μόνο το mocap είναι σε ROS χρόνο.
+Κάθε Livox και το IMU του μοιράζονται ρολόι. Μετατροπή σε ROS: + (χρόνος bag − επικεφαλίδα) του πρώτου μηνύματος, μετά αναζήτηση της υπολειπόμενης καθυστέρησης.
+
 ## Εντολές (όταν είναι έτοιμες)
 
 ```bash
