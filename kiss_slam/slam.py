@@ -738,7 +738,7 @@ class KissSLAM:
         return self._image_motion_parts(np.asarray(M, dtype=np.float64))
 
     def _image_motion_parts(self, M):
-        """Ablation (#047): which part of the image motion is used, and rotation smoothing.
+        """Ablation (#047): which part of the image motion is used, and rotation smoothing; weighted rotation (#092).
 
         rotation_smoothing = k > 1: the rotation is the mean rotation vector of this and the previous
         k-1 successful image motions (causal).  use_parts: "full" as measured; "translation" keeps the
@@ -753,6 +753,12 @@ class KissSLAM:
             del self._rotvec_history[:-k]
             M = M.copy()
             M[:3, :3] = Rotation.from_rotvec(np.mean(self._rotvec_history, axis=0)).as_matrix()
+        w = self.image_cfg.rotation_cv_weight
+        if w > 0 and self._frame_counter >= 2:      # weighted image rotation (#092): a little of the constant velocity
+            Rm = M[:3, :3]
+            rv = Rotation.from_matrix(Rm.T @ self.odometry.last_delta[:3, :3]).as_rotvec()
+            M = M.copy()
+            M[:3, :3] = Rm @ Rotation.from_rotvec(w * rv).as_matrix()
         parts = self.image_cfg.use_parts
         if parts == "translation":
             M = M.copy()

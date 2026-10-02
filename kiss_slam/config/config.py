@@ -184,6 +184,9 @@ class ImageDeskewConfig(BaseModel):
     # rotation_smoothing k > 1: mean rotation vector of the last k successful image motions (causal).
     use_parts: Literal["full", "translation", "rotation"] = "full"
     rotation_smoothing: int = 1
+    # Weighted image rotation (#092): R = R_img exp(w log(R_img^T R_cv)), R_cv the rotation of the last ICP motion
+    # (constant velocity), for BOTH uses of the image motion.  0 = the image rotation as measured (every result before #092).
+    rotation_cv_weight: float = 0.0
     # Plausibility gate (#054), each None = off (every result before #054): an image motion is rejected when fewer
     # than gate_min_matches matches support it, when it rotates more than gate_max_rotation_deg in one scan, or when its
     # rotation differs from the last accepted one by more than gate_max_rotation_change_deg.  blenheim-palace-02 (#053):

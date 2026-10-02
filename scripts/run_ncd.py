@@ -3,7 +3,7 @@
 
     python scripts/run_ncd.py <arm> <sequence> <out dir> [n_scans] [--config=<yaml>] [--seed=N] [--parallel]
                               [--topic=/os_cloud_node/points] [--intensity-scale=0.249] [--diag]
-                              [--parts=full|translation|rotation] [--rot-smooth=k] [--save-frames=<voxel m>] [--save-fraction=f]
+                              [--parts=full|translation|rotation] [--rot-smooth=k] [--rot-cv=w] [--save-frames=<voxel m>] [--save-fraction=f]
                               [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate]
                               [--rotation-weight=100] [--save-failed]
                               [--normalise=gain|gain_clahe] [--panorama-width=2048] [--panorama-up=4] [--image-start=false]
@@ -23,6 +23,7 @@ image-motion estimator, for measuring run-to-run spread (#037).  --parallel: the
 worker process, overlapping the ICP (image_deskew.parallel); same trajectory, less time per scan.
 --intensity-scale: image_deskew.intensity_scale, default 255/1024 for the Ouster signal (#041).
 --parts / --rot-smooth: ablation of the image motion (image_deskew.use_parts / rotation_smoothing, #047).
+--rot-cv: weight w of the constant-velocity rotation in the image rotation (image_deskew.rotation_cv_weight, #092; 0 = off).
 --save-frames: keep every deskewed scan (voxel-downsampled) in deskewed_frames.npz, for the map-sharpness test (#048);
 --save-fraction: only this random fraction of each scan's points (#049).
 --gate: plausibility gate on each image motion (>= gate-min matches, 0 = off by default; rotation <= gate-rot deg, change from the last
@@ -78,6 +79,7 @@ def main():
         config.diagnostics.icp_metrics = "--diag" in sys.argv
         config.image_deskew.use_parts = opts.get("parts", "full")
         config.image_deskew.rotation_smoothing = int(opts.get("rot-smooth", 1))
+        config.image_deskew.rotation_cv_weight = float(opts.get("rot-cv", 0.0))
         if "--gate" in sys.argv or "gate-min" in opts:           # plausibility gate + constant-velocity fallback (#054)
             config.image_deskew.gate_min_matches = int(opts.get("gate-min", 0))    # 0 = off (#054: Blenheim has few matches everywhere)
             config.image_deskew.gate_max_rotation_deg = float(opts.get("gate-rot", 10.0))
