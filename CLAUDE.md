@@ -9,7 +9,7 @@
 Το §7β της σύνοψης έχει τα νεότερα ευρήματα (#033–#039) — **πρώτο απ' όλα: το ATE ενός run δεν είναι μετρήσιμο
 μέγεθος** (σ = 0.02–0.04 m), οπότε κάθε σύγκριση γίνεται με RPE/μήκος διαδρομής ή με 4+ runs.
 
-**Εκκρεμότητες και ανοιχτά προβλήματα (29/9): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
+**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 3/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
 
 **Η μέθοδος αναλυτικά (εξισώσεις, κάθε επιλογή με την εγγραφή της): [`docs/method_description.md`](docs/method_description.md).** Ερώτημα
 θεωρητικής αξιολόγησης για ειδικό: [`docs/review_prompt_registration_deskew.md`](docs/review_prompt_registration_deskew.md).
@@ -82,6 +82,10 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
 - `scripts/eval_motion_npz.py` — σφάλμα ενός αποθηκευμένου npz κίνησης έναντι GT, χωρίς επανεκτίμηση.
 - `scripts/measure_variance.sh` — διασπορά της μεθόδου (4 σπόροι × 2 τρόποι κατασκευής)· **τρέξ' το πριν από κάθε σύγκριση**.
 - `scripts/analyze_rig_mask.py` — τι είναι καρφωμένο στον σαρωτή (σκιές διάταξης, σιλουέτα χειριστή).
+- **Solid-state (2–3/10, #095–#110):** `kiss_slam/tools/livox.py` (Livox `CustomMsg`, ROS1), `kiss_slam/tools/ros2bags.py` (ROS2 bags χωρίς ορισμούς τύπων, σε φακέλους)·
+  `scripts/solid_state_check.py`, `solid_state_accum.py`, `mid360_check.py` (εικόνα offline), `score_run_gyro.py`, `evaluate_tiers.py`· configs `livox_voxel{025,01}*.yaml`·
+  δεδομένα στον εξωτερικό SSD (`kiss_data_ssd/tiers/`, `kiss_data_ssd/hard_pcl_loc/`, `docs/datasets.md`). Επιλογές `run_ncd.py`: `--motion-file`, `--deskew-from=cv`,
+  `--two-start-kiss`, `--range=validate`, `--two-start-always`, `--voxel=auto`, `--panorama-width=auto --panorama-up=auto`, `--detect-scale`.
 - `kiss_slam/tools/ncd_pcd.py` — reader του Newer College 2020 (`.pcd` του Ouster, με intensity/ring/απόλυτο χρόνο).
 - `scripts/run_ncd.py` / `scripts/evaluate_ncd.py` — ένας βραχίονας (kiss / sift / surf) στο Newer College / αξιολόγηση έναντι GT.
 - `data/church_02_cut.bag` — test dataset (Oxford Spires christ-church-02, 240 s, 2402 scans).
