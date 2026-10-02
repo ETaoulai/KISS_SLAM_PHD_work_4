@@ -405,6 +405,62 @@ def residual_jac(x, p, tp, q, tq):
 # Jacobian of the time fit: "analytic" (residual_jac) or "2-point" (scipy's finite differences, every result
 # before fast_test).  Same minimum; the analytic one needs no extra residual evaluations.
 FIT_JAC = "analytic"
+# #093, all off by default (= every result before):
+# BUCKET_SECTORS: weight each match in the time fit so that every azimuth sector of the panorama (this many, equal) carries the same
+#   total weight - features clustered in one direction (a textured facade) no longer dominate the rotation.  None = off.
+# WHITEN = (sigma_r m, sigma_az rad, sigma_el rad): residual of the time fit in range / azimuth / elevation of the point, each divided by
+#   its uncertainty (sigma_az, sigma_el times the range), one robust loss on the whole point (soft_l1 of |r|^2 with WHITEN_FSCALE sigma)
+#   instead of one per x / y / z.  None = off.
+# CROSS_CHECK: keep a match only when it is also the best one in the reverse direction (later -> earlier panorama, the same window).
+BUCKET_SECTORS = None
+WHITEN, WHITEN_FSCALE = None, 1.5
+CROSS_CHECK = False
+
+
+def _fit_weights(q):
+    """(N, 3, 3) per-point matrix A applied to the time-fit residual (A r, Jacobian A J): whitening and sector weights (#093); None = off."""
+    if BUCKET_SECTORS is None and WHITEN is None:
+        return None
+    n = len(q)
+    A = np.broadcast_to(np.eye(3), (n, 3, 3)).copy()
+    if WHITEN is not None:
+        sr, saz, sel = WHITEN
+        rng_ = np.maximum(np.linalg.norm(q, axis=1), 1e-3)
+        er = q / rng_[:, None]
+        ea = np.cross(np.array([0.0, 0.0, 1.0]), er)
+        ea /= np.maximum(np.linalg.norm(ea, axis=1), 1e-9)[:, None]
+        ee = np.cross(er, ea)
+        U = np.stack([er, ea, ee], axis=1)                                   # rows: range, azimuth, elevation directions
+        A = np.stack([1.0 / sr * np.ones(n), 1.0 / (rng_ * saz), 1.0 / (rng_ * sel)], axis=1)[:, :, None] * U
+    if BUCKET_SECTORS is not None:
+        az = np.arctan2(q[:, 1], q[:, 0])
+        sec = np.minimum(((az + np.pi) / (2 * np.pi) * BUCKET_SECTORS).astype(int), BUCKET_SECTORS - 1)
+        cnt = np.bincount(sec, minlength=BUCKET_SECTORS).astype(float)
+        occupied = (cnt > 0).sum()
+        w = n / (occupied * cnt[sec])                                       # each occupied sector: total weight n / occupied
+        A = A * np.sqrt(w)[:, None, None]                                   # squared residuals weighted by w
+    return A
+
+
+def _whitened(x, p, tp, q, tq, A):
+    return np.einsum("nij,nj->ni", A, residual(x, p, tp, q, tq).reshape(-1, 3)).ravel()
+
+
+def _whitened_jac(x, p, tp, q, tq, A):
+    J = residual_jac(x, p, tp, q, tq).reshape(len(p), 3, -1)
+    return np.einsum("nij,njk->nik", A, J).reshape(-1, len(x))
+
+
+def _point_norm(x, p, tp, q, tq, A):
+    """One residual per point, |A r| (#093 WHITEN: one robust loss on the whole point, rotation invariant)."""
+    return np.linalg.norm(np.einsum("nij,nj->ni", A, residual(x, p, tp, q, tq).reshape(-1, 3)), axis=1)
+
+
+def _point_norm_jac(x, p, tp, q, tq, A):
+    r = np.einsum("nij,nj->ni", A, residual(x, p, tp, q, tq).reshape(-1, 3))
+    nr = np.maximum(np.linalg.norm(r, axis=1), 1e-9)
+    J = np.einsum("nij,njk->nik", A, residual_jac(x, p, tp, q, tq).reshape(len(p), 3, -1))
+    return np.einsum("ni,nik->nk", r / nr[:, None], J)
 
 
 def fit_time(p, tp, q, tq, M0, model="cv"):
@@ -416,9 +472,19 @@ def fit_time(p, tp, q, tq, M0, model="cv"):
         if stage != "cv":
             x = np.concatenate([x, np.zeros(extra)])    # start from the constant-velocity solution
         for _ in range(3):
-            x = least_squares(residual, x, args=(p[keep], tp[keep], q[keep], tq[keep]),
-                              jac=residual_jac if FIT_JAC == "analytic" else "2-point",
-                              loss="soft_l1", f_scale=0.05).x
+            A = _fit_weights(q[keep])
+            if A is None:
+                x = least_squares(residual, x, args=(p[keep], tp[keep], q[keep], tq[keep]),
+                                  jac=residual_jac if FIT_JAC == "analytic" else "2-point",
+                                  loss="soft_l1", f_scale=0.05).x
+            elif WHITEN is None:                                       # sector weights only: the same loss per coordinate (#093)
+                x = least_squares(_whitened, x, args=(p[keep], tp[keep], q[keep], tq[keep], A), jac=_whitened_jac,
+                                  loss="soft_l1", f_scale=0.05).x
+            else:                                                      # whitened, one robust loss per point (#093): soft_l1 of
+                for _ in range(2):                                     # |A r|^2 by reweighting (IRLS) - |A r| as the residual is
+                    z = _point_norm(x, p[keep], tp[keep], q[keep], tq[keep], A) ** 2 / WHITEN_FSCALE ** 2   # not smooth at 0 (slow)
+                    Aw = A * ((1.0 + z) ** -0.25)[:, None, None]       # sqrt of the soft_l1 weight 1 / sqrt(1 + z)
+                    x = least_squares(_whitened, x, args=(p[keep], tp[keep], q[keep], tq[keep], Aw), jac=_whitened_jac).x
             r = np.linalg.norm(residual(x, p, tp, q, tq).reshape(-1, 3), axis=1)
             keep = r < FIT_THR
             if keep.sum() < MIN_INL:
@@ -582,6 +648,22 @@ def refine_rotation_bearings(x, p, tp, q, tq):
     return xx
 
 
+def _cross_checked(good, kp1, d1, kp2, d2, bf, guided):
+    """The matches i -> j for which i is also the best match of j among kp1 (#093).  Guided: the reverse search in the same window
+    (centred at minus the shift); brute force: over the whole panorama.  No ratio test in the reverse direction."""
+    if guided and _guided_cpp is not None and d1.dtype != np.uint8:
+        a = np.array([k.pt for k in kp2]); b = np.array([k.pt for k in kp1])
+        a[:, 0] = (a[:, 0] - GUIDED_SHIFT) % W
+        win = float(GUIDED_WINDOW + 0.5 * abs(GUIDED_SHIFT))
+        rev, best, _ = _guided_cpp.guided_match(a.astype(np.float32), d2, b.astype(np.float32), d1, float(W), win, float(GUIDED_ROWS * UP))
+        rev = np.where(np.isfinite(best), rev, -1)
+    else:
+        rev = np.full(len(kp2), -1)
+        for m in bf.match(d2, d1):
+            rev[m.queryIdx] = m.trainIdx
+    return [m for m in good if rev[m.trainIdx] == m.queryIdx]
+
+
 def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
                  stuck_min=_DEFAULT, floor_only=_DEFAULT, elev=_DEFAULT, range_=_DEFAULT):
     """Motion of the later of two consecutive scans → (rigid M0, timed M1, n inliers).
@@ -617,8 +699,11 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
         good = guided_matches(kp1, d1, kp2, d2, GUIDED_SHIFT, GUIDED_WINDOW + 0.5 * abs(GUIDED_SHIFT))   # wider when turning fast
         if len(good) < GUIDED_MIN_MATCHES:
             good = None
+    guided_used = good is not None
     if good is None:
         good = [m for m, n in bf.knnMatch(d1, d2, k=2) if m.distance < RATIO * n.distance]
+    if CROSS_CHECK and good:                                           # #093: mutual best match, the same window reversed
+        good = _cross_checked(good, kp1, d1, kp2, d2, bf, guided_used)
     if GUIDED_WINDOW is not None and len(good) >= GUIDED_MIN_MATCHES:
         dx = np.array([kp2[m.trainIdx].pt[0] - kp1[m.queryIdx].pt[0] for m in good])
         GUIDED_SHIFT = float(np.median((dx + W / 2) % W - W / 2))      # wrapped column shift, for the next scan
@@ -720,7 +805,8 @@ class ScanMotionEstimator:
                  gate_min_matches=None, gate_max_rotation_deg=None, gate_max_rotation_change_deg=None,
                  save_rejected_dir=None, range_motion=None, range_hessian=10.0,
                  intensity_normalisation="none", panorama_width=None, bearing_min_range=None, guided_window=None,
-                 guided_prediction="shift", multi_baseline=False, fuse_range=False, panorama_up=None):
+                 guided_prediction="shift", multi_baseline=False, fuse_range=False, panorama_up=None,
+                 fit_sectors=None, whiten=None, cross_check=False):
         """`stuck_min`, `floor_only`, `elev`, `range_`: the stuck-match filter (#025-#027);
         left at their defaults they read the module globals STUCK_* at each call.
         `detector`, `surf_hessian`, `surf_upright`: the panorama features, see make_detector.
@@ -743,6 +829,10 @@ class ScanMotionEstimator:
         if panorama_up is not None:                   # #089: vertical upscaling of the panorama (8 = every result before; 4 for 128 beams)
             global UP
             UP = int(panorama_up)
+        global BUCKET_SECTORS, WHITEN, CROSS_CHECK              # #093: module-wide, as W
+        BUCKET_SECTORS = None if fit_sectors is None else int(fit_sectors)
+        WHITEN = None if whiten is None else tuple(float(v) for v in whiten)
+        CROSS_CHECK = bool(cross_check)
         global BEARING_MIN_RANGE, GUIDED_WINDOW               # #087: module-wide, as W
         global GUIDED_SHIFT, GUIDED_PREDICTION
         BEARING_MIN_RANGE, GUIDED_WINDOW = bearing_min_range, guided_window

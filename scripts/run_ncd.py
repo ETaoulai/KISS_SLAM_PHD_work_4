@@ -10,6 +10,7 @@
                               [--stuck=none|<m>] [--sigma=adaptive|<m>] [--deskew=false]
                               [--model=cv|car|ca] [--deskew-rotation=cv] [--redeskew] [--surf-upright | --no-upright] [--surf-hessian=<threshold>]
                               [--bearings=<min range m>] [--guided=<window px>|none] [--guided-predict=shift|motion]
+                              [--sectors=8] [--whiten=<sr>,<saz>,<sel>] [--cross-check]
 
 sequence: a 2020 sequence dir with raw_format/ouster_scan/*.pcd (kiss_slam/tools/ncd_pcd.py), or a
           .bag file, or a folder whose *.bag are ONE split sequence (read in time order; 2021 bags), or a KITTI raw
@@ -80,6 +81,12 @@ def main():
         config.image_deskew.use_parts = opts.get("parts", "full")
         config.image_deskew.rotation_smoothing = int(opts.get("rot-smooth", 1))
         config.image_deskew.rotation_cv_weight = float(opts.get("rot-cv", 0.0))
+        if "sectors" in opts:                                    # #093: equal weight per azimuth sector in the time fit
+            config.image_deskew.fit_sectors = int(opts["sectors"])
+        if "whiten" in opts:                                     # #093: range / azimuth / elevation whitening, one loss per point
+            config.image_deskew.whiten = [float(v) for v in opts["whiten"].split(",")]
+        if "--cross-check" in sys.argv:                          # #093: mutual best matches only
+            config.image_deskew.cross_check = True
         if "--gate" in sys.argv or "gate-min" in opts:           # plausibility gate + constant-velocity fallback (#054)
             config.image_deskew.gate_min_matches = int(opts.get("gate-min", 0))    # 0 = off (#054: Blenheim has few matches everywhere)
             config.image_deskew.gate_max_rotation_deg = float(opts.get("gate-rot", 10.0))
