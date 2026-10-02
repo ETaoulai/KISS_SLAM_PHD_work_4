@@ -69,7 +69,14 @@ def read_bag(bag, n_frames):
             if all(len(v) >= n_frames for v in frames.values()):
                 break
     frames["clock"] = clock
-    frames["imu"] = {k: np.array(v) for k, v in imu.items()}
+    frames["imu"] = {}
+    for k, v in imu.items():
+        a = np.array(v)
+        if len(a):
+            rest = a[:, 0] < a[0, 0] + 1.0                      # gyro bias from the first 1 s when the rig stands still (TIERS: ~1.5 s)
+            if np.median(np.linalg.norm(a[rest, 1:4], axis=1)) < 0.02:
+                a[:, 1:4] -= a[rest, 1:4].mean(axis=0)
+        frames["imu"][k] = a
     return frames
 
 
