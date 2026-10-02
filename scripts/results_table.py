@@ -136,7 +136,8 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "surftwofbv4": "upright SURF + guided matching, HYBRID: shift when slow, motion prediction when fast (#089)",
         "base092": "default of after_091 (upright SURF + guided matching, shift rule), two starts + range fallback (#092)",
         "rotcv05": "default of after_091, image rotation blended with constant velocity w = 0.05 (#092)",
-        "rotcv10": "default of after_091, image rotation blended with constant velocity w = 0.1 (#092)"}
+        "rotcv10": "default of after_091, image rotation blended with constant velocity w = 0.1 (#092)",
+        "up2093": "default of after_091, panorama upscale 2 instead of 8 (square pixels, Ouster 128, #093)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:

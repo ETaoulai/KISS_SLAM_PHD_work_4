@@ -399,6 +399,7 @@ class KissSLAM:
                     fit_sectors=self.image_cfg.fit_sectors,                      # #093
                     whiten=self.image_cfg.whiten,
                     cross_check=self.image_cfg.cross_check,
+                    detect_scale=self.image_cfg.detect_scale,
                     bearing_min_range=self.image_cfg.rotation_from_bearings,      # #087
                     guided_window=self.image_cfg.guided_matching_window,         # #087
                     guided_prediction=self.image_cfg.guided_prediction,          # #089

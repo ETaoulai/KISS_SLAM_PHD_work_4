@@ -6,11 +6,11 @@
                               [--parts=full|translation|rotation] [--rot-smooth=k] [--rot-cv=w] [--save-frames=<voxel m>] [--save-fraction=f]
                               [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate]
                               [--rotation-weight=100] [--save-failed]
-                              [--normalise=gain|gain_clahe] [--panorama-width=2048] [--panorama-up=4] [--image-start=false]
+                              [--normalise=gain|gain_clahe] [--panorama-width=2048|auto] [--panorama-up=4|auto] [--image-start=false]
                               [--stuck=none|<m>] [--sigma=adaptive|<m>] [--deskew=false]
                               [--model=cv|car|ca] [--deskew-rotation=cv] [--redeskew] [--surf-upright | --no-upright] [--surf-hessian=<threshold>]
                               [--bearings=<min range m>] [--guided=<window px>|none] [--guided-predict=shift|motion]
-                              [--sectors=8] [--whiten=<sr>,<saz>,<sel>] [--cross-check]
+                              [--sectors=8] [--whiten=<sr>,<saz>,<sel>] [--cross-check] [--detect-scale=0.5]
 
 sequence: a 2020 sequence dir with raw_format/ouster_scan/*.pcd (kiss_slam/tools/ncd_pcd.py), or a
           .bag file, or a folder whose *.bag are ONE split sequence (read in time order; 2021 bags), or a KITTI raw
@@ -85,6 +85,8 @@ def main():
             config.image_deskew.fit_sectors = int(opts["sectors"])
         if "whiten" in opts:                                     # #093: range / azimuth / elevation whitening, one loss per point
             config.image_deskew.whiten = [float(v) for v in opts["whiten"].split(",")]
+        if "detect-scale" in opts:                               # #093: panorama scale for the detector only (speed)
+            config.image_deskew.detect_scale = float(opts["detect-scale"])
         if "--cross-check" in sys.argv:                          # #093: mutual best matches only
             config.image_deskew.cross_check = True
         if "--gate" in sys.argv or "gate-min" in opts:           # plausibility gate + constant-velocity fallback (#054)
@@ -107,9 +109,11 @@ def main():
         if "normalise" in opts:                                  # per-scan intensity normalisation: gain | gain_clahe (#075)
             config.image_deskew.intensity_normalisation = opts["normalise"]
         if "panorama-up" in opts:                                # vertical upscaling of the panorama, e.g. 4 for 128 beams (#089)
-            config.image_deskew.panorama_up = int(opts["panorama-up"])
+            v = opts["panorama-up"]                              # "auto" (#093): square pixels from the first scan's ring spacing
+            config.image_deskew.panorama_up = v if v == "auto" else int(v)
         if "panorama-width" in opts:                             # panorama columns, e.g. 2048 for the Hilti Ouster (#075)
-            config.image_deskew.panorama_width = int(opts["panorama-width"])
+            v = opts["panorama-width"]                           # "auto" (#093): the sensor's own columns, from the first scan
+            config.image_deskew.panorama_width = v if v == "auto" else int(v)
         if "rotation-weight" in opts:                            # rotation information of the node graph (#067)
             config.pose_graph_optimizer.rotation_weight = float(opts["rotation-weight"])
         if "range" in opts:                                      # range-image motion: fallback | candidate (#058)

@@ -89,6 +89,34 @@ TRANS_AUTO_WINDOW, TRANS_AUTO_MIN = 100, 20
 CALIB = None   # {"r_edges", "c_edges", "table"}: median intensity per (range, cos incidence) bin (#025)
 
 
+def native_width(xyz, ts, ring):
+    """The sensor's own columns per revolution (#093): 360 deg over the median azimuth step between consecutive firings of a ring
+    (in time order; repeated azimuths of a dual return skipped).  Measured from one scan: Ouster 1024 / 2048, Hesai QT64 600."""
+    ok = np.isfinite(xyz).all(axis=1) & (np.linalg.norm(xyz, axis=1) > MIN_RANGE)
+    rings = np.unique(ring[ok])
+    steps = []
+    for k in rings[:: max(1, len(rings) // 8)]:
+        m = ok & (ring == k)
+        a = np.degrees(np.unwrap(np.arctan2(xyz[m, 1], xyz[m, 0])[np.argsort(ts[m], kind="stable")]))
+        d = np.abs(np.diff(a)); d = d[(d > 1e-4) & (d < 5)]
+        if len(d):
+            steps.append(np.median(d))
+    return W if not steps else int(round(360.0 / float(np.median(steps))))
+
+
+def square_upscale(xyz, ring):
+    """Vertical upscaling that makes the panorama pixels square in angle (#093): the median elevation step between adjacent rings
+    over the column width (360 / W deg), rounded, at least 1.  Measured from one scan, so it follows the sensor with no setting:
+    Ouster 128 -> 2, OS1-64 -> 2, Ouster 64 / Hesai QT64 -> 4, OS1-16 -> 6 (the fixed 8 of every result before over-samples most)."""
+    ok = np.isfinite(xyz).all(axis=1) & (np.linalg.norm(xyz, axis=1) > MIN_RANGE)
+    elev = np.degrees(np.arctan2(xyz[ok, 2], np.linalg.norm(xyz[ok, :2], axis=1)))
+    r = ring[ok]
+    e = np.sort([np.median(elev[r == k]) for k in np.unique(r)])
+    if len(e) < 2:
+        return UP
+    return max(1, int(round(float(np.median(np.diff(e))) / (360.0 / W))))
+
+
 def incidence_cos(xyz, knn=10):
     """|cos| of the incidence angle per point, from PCA normals of its 3D neighbours (Open3D).
 
@@ -521,6 +549,23 @@ def make_detector(detector="sift", surf_hessian=100.0, surf_upright=False):
     raise ValueError(f"unknown detector {detector!r}: 'sift', 'surf' or 'orb'")
 
 
+# #093: scale of the panorama for the detector only (1 = every result before).  < 1: the image is shrunk before SURF / SIFT (cost ~ area)
+# and the keypoints are mapped back to full-resolution pixels, so matching, lookup and the fit are unchanged.
+DETECT_SCALE = 1.0
+
+
+def _detect(detector, img):
+    if DETECT_SCALE == 1.0:
+        return detector.detectAndCompute(img, None)
+    h, w = img.shape[:2]
+    small = cv2.resize(img, (max(1, round(w * DETECT_SCALE)), max(1, round(h * DETECT_SCALE))), interpolation=cv2.INTER_AREA)
+    kps, desc = detector.detectAndCompute(small, None)
+    sx, sy = w / small.shape[1], h / small.shape[0]
+    kps = [cv2.KeyPoint((k.pt[0] + 0.5) * sx - 0.5, (k.pt[1] + 0.5) * sy - 0.5, k.size * sx, k.angle, k.response, k.octave, k.class_id)
+           for k in kps]
+    return kps, desc
+
+
 def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
     """Panorama + keypoints/descriptors (SIFT or SURF, see make_detector) of one raw scan:
     (P, T, valid, keypoints, descriptors, t_start, panorama image).  match_motion uses the first six.
@@ -536,7 +581,7 @@ def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
         if not _clahe:
             _clahe.append(cv2.createCLAHE(clipLimit=3.0, tileGridSize=(4, 16)))
         big = _clahe[0].apply(big)
-    kps, desc = detector.detectAndCompute(big, None)
+    kps, desc = _detect(detector, big)
     return P, T, valid, kps, desc, ts[ok].min(), big
 
 
@@ -550,7 +595,7 @@ def range_features(xyz, ts, ring, detector, _clahe=[]):
     val = np.clip(255 * np.log(np.clip(r, 1, 60)) / np.log(60), 0, 255)
     big, P, T, valid = panorama(xyz[ok], ts[ok], val[ok], ring[ok])
     big = _clahe[0].apply(big)
-    kps, desc = detector.detectAndCompute(big, None)
+    kps, desc = _detect(detector, big)
     return P, T, valid, kps, desc, ts[ok].min(), big
 
 
@@ -585,6 +630,12 @@ def predict_pixels(f1, f2, M):
     return pred, ok & np.isfinite(pred).all(1)
 
 
+def _px(columns):
+    """Columns of the 1024-column panorama -> columns of the current one (#093: the guided-matching windows and the fast-rotation
+    threshold are angles, set as columns at W = 1024; exactly the same at 1024)."""
+    return columns * W / 1024.0
+
+
 def guided_matches(kp1, d1, kp2, d2, shift=0.0, window=None, centres=None):
     """Matches of kp1 among the kp2 within GUIDED_WINDOW columns / GUIDED_ROWS rings of the same pixel (#087), as cv2.DMatch.
 
@@ -600,17 +651,17 @@ def guided_matches(kp1, d1, kp2, d2, shift=0.0, window=None, centres=None):
     binary = d1.dtype == np.uint8                                 # ORB (#088): Hamming distance
     if _guided_cpp is not None:                                   # C++ (scripts/build_guided_match.sh): rectangular window, all candidates
         f = _guided_cpp.guided_match_hamming if binary else _guided_cpp.guided_match
-        j, best, second = f(a.astype(np.float32), d1, b.astype(np.float32), d2, float(W), float(window or GUIDED_WINDOW), float(GUIDED_ROWS * UP))
+        j, best, second = f(a.astype(np.float32), d1, b.astype(np.float32), d2, float(W), float(window or _px(GUIDED_WINDOW)), float(GUIDED_ROWS * UP))
         fin = np.isfinite(best)
         if not fin.any():
             return []
         ok = fin & ((best < RATIO * second) | (~np.isfinite(second) & (best < np.median(best[fin]))))
         return [cv2.DMatch(int(i), int(j[i]), float(best[i])) for i in np.flatnonzero(ok)]
     from scipy.spatial import cKDTree
-    sy = GUIDED_WINDOW / (GUIDED_ROWS * UP)                       # anisotropic window as a circle of radius GUIDED_WINDOW
+    sy = _px(GUIDED_WINDOW) / (GUIDED_ROWS * UP)                  # anisotropic window as a circle of radius GUIDED_WINDOW
     bb = np.concatenate([b, b + [W, 0], b - [W, 0]]); src = np.tile(np.arange(len(b)), 3)
     tree = cKDTree(bb * [1.0, sy])
-    dist, idx = tree.query(a * [1.0, sy], k=min(GUIDED_K, len(bb)), distance_upper_bound=GUIDED_WINDOW)
+    dist, idx = tree.query(a * [1.0, sy], k=min(GUIDED_K, len(bb)), distance_upper_bound=_px(GUIDED_WINDOW))
     dist, idx = np.atleast_2d(dist), np.atleast_2d(idx)
     valid = np.isfinite(dist)
     cand = np.where(valid, src[np.minimum(idx, len(bb) - 1)], 0)
@@ -654,7 +705,7 @@ def _cross_checked(good, kp1, d1, kp2, d2, bf, guided):
     if guided and _guided_cpp is not None and d1.dtype != np.uint8:
         a = np.array([k.pt for k in kp2]); b = np.array([k.pt for k in kp1])
         a[:, 0] = (a[:, 0] - GUIDED_SHIFT) % W
-        win = float(GUIDED_WINDOW + 0.5 * abs(GUIDED_SHIFT))
+        win = float(_px(GUIDED_WINDOW) + 0.5 * abs(GUIDED_SHIFT))
         rev, best, _ = _guided_cpp.guided_match(a.astype(np.float32), d2, b.astype(np.float32), d1, float(W), win, float(GUIDED_ROWS * UP))
         rev = np.where(np.isfinite(best), rev, -1)
     else:
@@ -689,14 +740,14 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
         return None, None, 0
     global GUIDED_SHIFT
     good = None
-    fast = abs(GUIDED_SHIFT) > GUIDED_MAX_SHIFT
+    fast = abs(GUIDED_SHIFT) > _px(GUIDED_MAX_SHIFT)
     use_motion = GUIDED_PREDICTION == "motion" or (GUIDED_PREDICTION == "hybrid" and fast)        # #089: hybrid = motion only when fast
     if GUIDED_WINDOW is not None and use_motion and GUIDED_PRED_MOTION is not None:   # #089: per-keypoint prediction
-        good = guided_matches(kp1, d1, kp2, d2, GUIDED_SHIFT, GUIDED_WINDOW, predict_pixels(f1, f2, GUIDED_PRED_MOTION))
+        good = guided_matches(kp1, d1, kp2, d2, GUIDED_SHIFT, _px(GUIDED_WINDOW), predict_pixels(f1, f2, GUIDED_PRED_MOTION))
         if len(good) < GUIDED_MIN_MATCHES:
             good = None
-    elif GUIDED_WINDOW is not None and abs(GUIDED_SHIFT) <= GUIDED_MAX_SHIFT:   # #087; #088: only when turning slowly, window at the previous shift
-        good = guided_matches(kp1, d1, kp2, d2, GUIDED_SHIFT, GUIDED_WINDOW + 0.5 * abs(GUIDED_SHIFT))   # wider when turning fast
+    elif GUIDED_WINDOW is not None and abs(GUIDED_SHIFT) <= _px(GUIDED_MAX_SHIFT):   # #087; #088: only when turning slowly, window at the previous shift
+        good = guided_matches(kp1, d1, kp2, d2, GUIDED_SHIFT, _px(GUIDED_WINDOW) + 0.5 * abs(GUIDED_SHIFT))   # wider when turning fast
         if len(good) < GUIDED_MIN_MATCHES:
             good = None
     guided_used = good is not None
@@ -806,7 +857,7 @@ class ScanMotionEstimator:
                  save_rejected_dir=None, range_motion=None, range_hessian=10.0,
                  intensity_normalisation="none", panorama_width=None, bearing_min_range=None, guided_window=None,
                  guided_prediction="shift", multi_baseline=False, fuse_range=False, panorama_up=None,
-                 fit_sectors=None, whiten=None, cross_check=False):
+                 fit_sectors=None, whiten=None, cross_check=False, detect_scale=1.0):
         """`stuck_min`, `floor_only`, `elev`, `range_`: the stuck-match filter (#025-#027);
         left at their defaults they read the module globals STUCK_* at each call.
         `detector`, `surf_hessian`, `surf_upright`: the panorama features, see make_detector.
@@ -823,13 +874,18 @@ class ScanMotionEstimator:
         # #075: per-scan intensity normalisation (replaces the fixed intensity_scale when not "none") and the panorama
         # columns (module-wide W, so every panorama of this process; None = keep W, 1024).  2048 = the Hilti Ouster's own.
         self.intensity_normalisation = intensity_normalisation
-        if panorama_width is not None:
+        self.auto_width = panorama_width == "auto"   # #093: the sensor's own columns, measured from the first scan
+        if panorama_width is not None and not self.auto_width:
             global W
             W = int(panorama_width)
-        if panorama_up is not None:                   # #089: vertical upscaling of the panorama (8 = every result before; 4 for 128 beams)
+        self.auto_up = panorama_up == "auto"         # #093: square pixels, measured from the first scan
+        self.panorama_up = None if self.auto_up else panorama_up
+        if panorama_up is not None and not self.auto_up:   # #089: vertical upscaling of the panorama (8 = every result before; 4 for 128 beams)
             global UP
             UP = int(panorama_up)
         global BUCKET_SECTORS, WHITEN, CROSS_CHECK              # #093: module-wide, as W
+        global DETECT_SCALE
+        DETECT_SCALE = float(detect_scale)
         BUCKET_SECTORS = None if fit_sectors is None else int(fit_sectors)
         WHITEN = None if whiten is None else tuple(float(v) for v in whiten)
         CROSS_CHECK = bool(cross_check)
@@ -868,6 +924,14 @@ class ScanMotionEstimator:
 
     def motion(self, xyz, ts, inten, ring):
         self.k += 1
+        if self.k == 0 and self.auto_width:                   # #093: first scan - the columns, then the upscaling (it depends on them)
+            global W
+            W = native_width(xyz, ts, ring)
+            print(f"ScanMotionEstimator| panorama columns auto (sensor's own): {W}", flush=True)
+        if self.auto_up and self.panorama_up is None:          # #093: first scan - set the upscaling once, for the whole run
+            global UP
+            UP = self.panorama_up = square_upscale(xyz, ring)
+            print(f"ScanMotionEstimator| panorama upscaling auto (square pixels): {UP}", flush=True)
         self.last_reason = None
         if self.intensity_scale != 1.0 and self.intensity_normalisation == "none":
             inten = inten * self.intensity_scale

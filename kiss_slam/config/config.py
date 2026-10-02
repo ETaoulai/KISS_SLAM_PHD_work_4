@@ -23,7 +23,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import yaml
 from kiss_icp.config.config import (
@@ -214,16 +214,18 @@ class ImageDeskewConfig(BaseModel):
     # scaled so its 99th percentile is 255 (no per-sensor scale; Hilti failures 447 -> 60 on UZH); "gain_clahe" = gain +
     # local contrast equalisation.  Panorama columns: None = 1024 (every result before #075); 2048 = the Hilti Ouster's own.
     intensity_normalisation: Literal["none", "gain", "gain_clahe"] = "none"
-    panorama_width: Optional[int] = None
+    panorama_width: Optional[Union[int, Literal["auto"]]] = None   # "auto" (#093): the sensor's own columns per revolution
     # Vertical upscaling of the panorama for the detector (#089).  None = 8 (every result before).  4 suits 128-beam sensors (0.7 deg per
     # ring: 8 over-samples 4x) - on underground_hard -26 % image time and -10 % rotation error.
-    panorama_up: Optional[int] = None
+    panorama_up: Optional[Union[int, Literal["auto"]]] = None     # "auto" (#093): square pixels from the measured ring spacing
     # Image-motion fit (#093), all off by default: fit_sectors = equal total weight per azimuth sector in the time fit; whiten =
     # (sigma_r m, sigma_az rad, sigma_el rad), residuals in range / azimuth / elevation over their uncertainty, one robust loss per point;
     # cross_check = keep only mutual best matches.
     fit_sectors: Optional[int] = None
     whiten: Optional[List[float]] = None
     cross_check: bool = False
+    # Scale of the panorama for the feature detector only (#093): < 1 shrinks it before SURF (speed), keypoints mapped back.  1 = unchanged.
+    detect_scale: float = 1.0
     range_hessian: float = 10.0
     # Folder for the panoramas + matches of every failed / rejected scan (rejected.csv lists them).  None = off.
     save_rejected_dir: Optional[str] = None
