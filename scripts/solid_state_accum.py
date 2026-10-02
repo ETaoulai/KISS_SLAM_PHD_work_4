@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Motion-compensated accumulation for solid-state LiDARs (#096, open_tasks B.10a): TIERS Indoor02, Livox Avia / Horizon, scored on their gyros.
 
-    python scripts/solid_state_accum.py <bag> <optitrack.csv> [--frames=N] [--kinds=avia,horizon] [--K=2,3,5] [--out=<prefix>]
+    python scripts/solid_state_accum.py <bag> <optitrack.csv> [--frames=N] [--kinds=avia,horizon] [--K=2,3,5] [--comp=estimate,gyro,icp]
+                                  [--icp-avia=<KISS run dir>] [--icp-horizon=<KISS run dir>] [--out=<prefix>]
 
 #095: one Livox scan gives too sparse an image (14-43 inliers), and accumulating raw scans blurs it (the sensor moves in the window).
 Here the image of scan k is built from scans k-K+1 .. k, all brought into the sensor frame at the START of scan k:
@@ -12,6 +13,8 @@ The image only places features.  The 3D point and the time of a keypoint come fr
 its own time), so the time-aware fit sees what it sees today - raw points of scan k-1 against raw points of scan k - and the motion,
 deskew and ICP are unchanged.  The shared content of the two images is placed by motions already estimated, so it does not pull the new
 motion toward zero (#095: sliding raw windows would).  Risk: an estimate error moves the next image (error propagation).
+Variant "icp" (#099): the compensation (older scans and the prediction of the current one) from a KISS run on the same sensor - what the
+pipeline would use, causally (the ICP poses of scans before k exist when scan k arrives; rotation AND translation).
 Variant "gyro": the older scans compensated with the gyro's rotation (rotation only, translation 0) - how much of the effect is density
 and how much is the quality of the compensation.  Failed motions: constant velocity for the compensation.
 
@@ -81,7 +84,7 @@ class Grid:
         return P[ri, ci], T[ri, ci], dist <= 1.5
 
 
-def run(frames, kind, K, ds, comp, imu, clock_off):
+def run(frames, kind, K, ds, comp, imu, clock_off, icp=None):
     fr = frames[kind]
     n_pts = np.median([len(f[1]) for f in fr])
     az, el = Grid.angles(fr[0][1])
@@ -105,7 +108,12 @@ def run(frames, kind, K, ds, comp, imu, clock_off):
     for i, (stamp, xyz, ts, inten, ring) in enumerate(fr):
         t0, t1 = float(ts.min()), float(ts.min()) + 0.1
         s = np.clip((ts - t0) / 0.1, 0, 1)
-        pred = gyro_M(t0) if comp == "gyro" else last_M
+        if comp == "gyro":
+            pred = gyro_M(t0)
+        elif comp == "icp":
+            pred = icp[i - 1] if i >= 1 else np.eye(4)            # constant velocity from the ICP (scan k-1's motion)
+        else:
+            pred = last_M
         cur_pos = deskew(xyz, s, pred, to_end=False)                 # current scan into its start frame
         pos, val = [cur_pos], [inten]
         carry = np.eye(4)                                            # C_j = M_{j+1} ... M_{k-1}: start of k in the frame at the end of scan j
@@ -126,7 +134,7 @@ def run(frames, kind, K, ds, comp, imu, clock_off):
         prev_feat = feat
         if M is not None:
             last_M = M
-        used = gyro_M(t0) if comp == "gyro" else (M if M is not None else last_M)
+        used = gyro_M(t0) if comp == "gyro" else icp[i] if comp == "icp" else (M if M is not None else last_M)
         if K > 1:
             hist = (hist + [(xyz, s, inten, used, t0)])[-(K - 1):]
     return times, motions, inl, step, g.W
@@ -140,9 +148,13 @@ def main():
     for kind in opts.get("kinds", "avia,horizon").split(","):
         off = frames["clock"][AVIA_TOPIC if kind == "avia" else HORIZON_TOPIC]
         for K in [int(k) for k in opts.get("K", "2,3,5").split(",")]:
-            for comp in ("estimate", "gyro"):
+            icp = None
+            if f"icp-{kind}" in opts:                    # a KISS run on this sensor: motion of scan j = P_{j-1}^-1 P_j (pose at the end of the scan)
+                P = np.load(sorted(Path(opts[f"icp-{kind}"]).glob("*/*_poses.npy"))[-1])
+                icp = [np.eye(4)] + [np.linalg.inv(P[j - 1]) @ P[j] for j in range(1, len(P))]
+            for comp in opts.get("comp", "estimate,gyro" + (",icp" if icp is not None else "")).split(","):
                 for ds in (1.0, 2.0):
-                    times, motions, inl, step, W = run(frames, kind, K, ds, comp, frames["imu"][kind], off)
+                    times, motions, inl, step, W = run(frames, kind, K, ds, comp, frames["imu"][kind], off, icp)
                     score_gyro(f"{kind} K{K} {comp} det x{ds:g}", [(a - off, b - off) for a, b in times], motions, inl, frames["imu"][kind])
                     print(f"{'':28s} pixel {step:.3f} deg, image {W} columns")
                     if out:
