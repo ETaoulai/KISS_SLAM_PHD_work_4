@@ -10,7 +10,7 @@
                               [--stuck=none|<m>] [--sigma=adaptive|<m>] [--deskew=false]
                               [--model=cv|car|ca] [--deskew-rotation=cv] [--redeskew] [--surf-upright | --no-upright] [--surf-hessian=<threshold>]
                               [--bearings=<min range m>] [--guided=<window px>|none] [--guided-predict=shift|motion]
-                              [--sectors=8] [--whiten=<sr>,<saz>,<sel>] [--cross-check] [--detect-scale=0.5] [--motion-file=<npz>] [--deskew-from=image|cv]
+                              [--sectors=8] [--whiten=<sr>,<saz>,<sel>] [--cross-check] [--detect-scale=0.5] [--motion-file=<npz>] [--deskew-from=image|cv] [--two-start-kiss]
 
 sequence: a 2020 sequence dir with raw_format/ouster_scan/*.pcd (kiss_slam/tools/ncd_pcd.py), or a
           .bag file, or a folder whose *.bag are ONE split sequence (read in time order; 2021 bags), or a KITTI raw
@@ -153,6 +153,8 @@ def main():
             config.image_deskew.guided_matching_window = None if v.lower() in ("none", "off") else float(v)
         if "guided-predict" in opts:                             # shift | motion: centre of the guided window (#089)
             config.image_deskew.guided_prediction = opts["guided-predict"]
+        if "--two-start-kiss" in sys.argv:                        # second start / image-failure fallback = KISS (CV deskew + start) (#108)
+            config.image_deskew.two_start_kiss = True
         if "deskew-from" in opts:                                # image | cv: deskew from constant velocity, image only as ICP start (#103)
             config.image_deskew.deskew_from = opts["deskew-from"]
         if "motion-file" in opts:                                # precomputed image motions (N, 4, 4), NaN = failed (#101: Livox)

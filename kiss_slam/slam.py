@@ -806,9 +806,10 @@ class KissSLAM:
         odo = self.odometry
         M = self._image_motion(frame, timestamps, intensity, ring)
         cv_deskew = self.image_cfg.deskew_from == "cv"   # #103: deskew with constant velocity (as KISS), the image only as the ICP start
+        kiss_floor = self.image_cfg.two_start_kiss       # #108: the second start (and the fallback of a failed image motion) is KISS itself
         if M is None:                         # no image motion: no deskew (#012); ICP start per image_deskew.fallback
-            delta = odo.last_delta if cv_deskew else np.eye(4)
-            start = odo.last_delta if (self.image_cfg.fallback == "constant_velocity" or cv_deskew) else delta
+            delta = odo.last_delta if (cv_deskew or kiss_floor) else np.eye(4)
+            start = odo.last_delta if (self.image_cfg.fallback == "constant_velocity" or cv_deskew or kiss_floor) else delta
         else:
             delta = M if self.image_cfg.use_for_deskew else np.eye(4)      # False: ICP start only, no deskew (#082)
             if cv_deskew:
@@ -849,7 +850,7 @@ class KissSLAM:
                                                               self.image_cfg.range_motion == "candidate") else None
             if Mr is not None:
                 cands["range"] = (Mr, Mr)
-            cands["cv"] = (np.eye(4), odo.last_delta)
+            cands["cv"] = (odo.last_delta if kiss_floor else np.eye(4), odo.last_delta)   # #108: KISS (CV deskew + CV start)
             rot = lambda A, B: np.degrees(np.arccos(np.clip((np.trace((np.linalg.inv(A) @ B)[:3, :3]) - 1) / 2, -1, 1)))
             starts = [c[1] for c in cands.values()]
             disagree = max(rot(a, b) for i, a in enumerate(starts) for b in starts[i + 1:])
