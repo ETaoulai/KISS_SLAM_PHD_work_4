@@ -192,6 +192,10 @@ class ImageDeskewConfig(BaseModel):
     # slerp, translation linear, for BOTH uses of the image motion.  "off" = the image motion as measured (every result before #131).
     cv_blend: Literal["off", "adaptive"] = "off"
     cv_blend_window: int = 20
+    # #137 (diagnosis of the drone loss, #133 / #134): cv_blend_part "rotation" = blend the rotation only, keep the image translation;
+    # cv_blend_use "deskew" = the blend only for the deskew, the ICP start stays the image motion as measured.  Defaults = #131.
+    cv_blend_part: Literal["full", "rotation"] = "full"
+    cv_blend_use: Literal["both", "deskew"] = "both"
     # Longer baseline (#090 / #130): the motion fit also uses the matches of scan k-2 <-> k on the same curve.  False = every result before.
     # "translation" (#131): only the translation from the joint fit, the rotation stays the two-scan one (the deskew needs the rotation per scan).
     multi_baseline: Union[bool, Literal["translation"]] = False

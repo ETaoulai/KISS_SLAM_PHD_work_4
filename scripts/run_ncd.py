@@ -113,6 +113,8 @@ def main():
         if "cv-blend" in opts:                                   # #131: adaptive blend of the image motion and the constant velocity
             config.image_deskew.cv_blend = opts["cv-blend"]
             config.image_deskew.cv_blend_window = int(opts.get("cv-blend-window", 20))
+            config.image_deskew.cv_blend_part = opts.get("cv-blend-part", "full")     # #137: full | rotation
+            config.image_deskew.cv_blend_use = opts.get("cv-blend-use", "both")       # #137: both | deskew
         if "--multi-baseline" in sys.argv:                       # #130: the motion fit with the matches of k-2 <-> k too
             config.image_deskew.multi_baseline = True
         if opts.get("multi-baseline") == "translation":          # #131: only its translation, the rotation of the two-scan fit

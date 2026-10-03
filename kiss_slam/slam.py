@@ -794,6 +794,7 @@ class KissSLAM:
             self._blend_errors.append((ang(Mp), ang(Cp)))
             del self._blend_errors[:-self.image_cfg.cv_blend_window]
         self._blend_pending = (self._frame_counter, M.copy(), C.copy())
+        self._blend_raw = (self._frame_counter, M.copy())      # #137: the image motion as measured (cv_blend_use "deskew")
         if len(self._blend_errors) < 3:
             self.blend_weights.append(1.0)
             return M
@@ -804,6 +805,8 @@ class KissSLAM:
         B = np.eye(4)
         B[:3, :3] = Slerp([0, 1], Rotation.from_matrix(np.stack([C[:3, :3], M[:3, :3]])))(w).as_matrix()
         B[:3, 3] = (1 - w) * C[:3, 3] + w * M[:3, 3]
+        if self.image_cfg.cv_blend_part == "rotation":            # #137
+            B[:3, 3] = M[:3, 3]
         return B
 
     @property
@@ -852,6 +855,10 @@ class KissSLAM:
                 delta = M.copy()
                 delta[:3, :3] = odo.last_delta[:3, :3]
             start = M if self.image_cfg.use_as_initial_guess else odo.last_delta
+            raw = getattr(self, "_blend_raw", None)
+            if (self.image_cfg.cv_blend == "adaptive" and self.image_cfg.cv_blend_use == "deskew" and raw is not None
+                    and raw[0] == self._frame_counter and self.image_cfg.use_as_initial_guess):
+                start = raw[1]                                    # #137: the blend deskews, the ICP starts from the image
         if self.image_cfg.deskew_motion_file is not None:   # oracle deskew (#086): the ground-truth motion, deskew only
             if not hasattr(self, "_oracle_deskew"):
                 self._oracle_deskew = np.load(self.image_cfg.deskew_motion_file)["motion"]
@@ -879,7 +886,7 @@ class KissSLAM:
             t0 = time.perf_counter()
             # Starting points (#057, #058): the image motion (already registered), the range motion if asked for, and
             # constant velocity (no deskew).  Registered again only when some pair disagrees by more than two_start_deg.
-            cands = {"image": (M, M)}
+            cands = {"image": (delta if self.image_cfg.cv_blend_use == "deskew" else M, start if self.image_cfg.cv_blend_use == "deskew" else M)}
             Mr = self._image_motion_est.last_range_motion if (self._image_motion_est is not None and
                                                               self.image_cfg.range_motion in ("candidate", "validate")) else None
             if Mr is not None:
