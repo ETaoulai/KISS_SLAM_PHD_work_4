@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Motion within the sweep from the scan ITSELF on a non-repetitive (rosette) LiDAR (#116, open_tasks B.10).  Offline check, no SLAM.
 
-    python scripts/rosette_selfmotion.py <TIERS bag> <optitrack.csv> [--kinds=avia,horizon] [--gap=0.25] [--frames=423] [--alpha]
+    python scripts/rosette_selfmotion.py <TIERS bag> <optitrack.csv> [--kinds=avia,horizon] [--gap=0.25] [--frames=423] [--alpha] [--out=<prefix>]
 
 A rosette scanner revisits the same directions several times within one 0.1 s sweep (every petal crosses the centre); a spinning LiDAR never
 does.  So the sweep's own points can measure its motion: with a constant-velocity motion (w, v) over the sweep, every point goes to the
@@ -77,10 +77,12 @@ def self_motion(xyz, s, gap=0.25, iters=10, alpha=False, kernel=0.05, max_pts=80
         dx = -np.linalg.solve(H + 1e-6 * np.eye(npar), g)
         x = x + dx
         n_used = len(i)
+        rms = float(np.sqrt(np.average(res ** 2, weights=wgt)))
         if np.linalg.norm(dx) < 1e-6:
             break
     phi1 = x[:3] + (0.5 * x[6:9] if alpha else 0.0)
     M = np.eye(4); M[:3, :3] = R.from_rotvec(phi1).as_matrix(); M[:3, 3] = x[3:6]
+    self_motion.last_rms = rms
     return M, n_used
 
 
@@ -93,11 +95,19 @@ def main():
         off = frames["clock"][AVIA_TOPIC if kind == "avia" else HORIZON_TOPIC]
         for gap in gaps:
             for alpha in ([False, True] if "--alpha" in sys.argv else [False]):
-                times, motions, used = [], [], []
+                times, motions, used, rmss = [], [], [], []
                 for stamp, xyz, ts, inten, line in frames[kind][1:]:
                     t0 = float(ts.min()); s = np.clip((ts - t0) / 0.1, 0, 1)
+                    self_motion.last_rms = np.nan
                     M, n = self_motion(xyz, s, gap=gap, alpha=alpha)
-                    times.append((t0, t0 + 0.1)); motions.append(M); used.append(n)
+                    times.append((t0, t0 + 0.1)); motions.append(M); used.append(n); rmss.append(self_motion.last_rms)
+                if "out" in opts:                            # motion file for run_ncd --motion-file (scan 0 has none), + constraints / residual
+                    mot = np.full((len(frames[kind]), 4, 4), np.nan)
+                    for j, M in enumerate(motions):
+                        if M is not None:
+                            mot[j + 1] = M
+                    np.savez(f"{opts['out']}_{kind}_gap{gap:g}{'_alpha' if alpha else ''}.npz", motion=mot, n=np.r_[0, used],
+                             rms=np.r_[np.nan, rmss], times=np.array(times), off=frames["clock"][AVIA_TOPIC if kind == "avia" else HORIZON_TOPIC])
                 score_gyro(f"{kind} self, gap {gap:g}{' +alpha' if alpha else ''}", [(a - off, b - off) for a, b in times], motions, used,
                            frames["imu"][kind])
                 print(f"{'':28s} constraints p50 {np.median(used):.0f}", flush=True)
