@@ -24,6 +24,7 @@ image-motion estimator, for measuring run-to-run spread (#037).  --parallel: the
 worker process, overlapping the ICP (image_deskew.parallel); same trajectory, less time per scan.
 --intensity-scale: image_deskew.intensity_scale, default 255/1024 for the Ouster signal (#041).
 --parts / --rot-smooth: ablation of the image motion (image_deskew.use_parts / rotation_smoothing, #047).
+--fuse-range: range-panorama matches in the motion fit too (#090).  --drop-stationary: drop the pairs zero motion explains (#132).
 --cv-blend=adaptive [--cv-blend-window=20]: blend of the image motion and the constant velocity, weights from their recent errors
 against the ICP (image_deskew.cv_blend, #131).  --multi-baseline: the image-motion fit also with the matches of scan k-2 (#130); --multi-baseline=translation: only its translation (#131).
 --rot-cv: weight w of the constant-velocity rotation in the image rotation (image_deskew.rotation_cv_weight, #092; 0 = off).
@@ -116,6 +117,10 @@ def main():
             config.image_deskew.multi_baseline = True
         if opts.get("multi-baseline") == "translation":          # #131: only its translation, the rotation of the two-scan fit
             config.image_deskew.multi_baseline = "translation"
+        if "--fuse-range" in sys.argv:                           # #090: range-panorama matches in the same motion fit
+            config.image_deskew.fuse_range = True
+        if "--drop-stationary" in sys.argv:                      # #132: drop pairs zero motion explains as well, refit
+            config.image_deskew.drop_stationary = True
         if "sectors" in opts:                                    # #093: equal weight per azimuth sector in the time fit
             config.image_deskew.fit_sectors = int(opts["sectors"])
         if "whiten" in opts:                                     # #093: range / azimuth / elevation whitening, one loss per point

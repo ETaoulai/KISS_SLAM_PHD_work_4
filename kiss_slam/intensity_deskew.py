@@ -35,6 +35,9 @@ RATIO, RANSAC_THR, RANSAC_IT, MIN_INL, FIT_THR = 0.75, 0.30, 400, 10, 0.10
 # GUIDED_WINDOW (px, azimuth): match each keypoint only against the next panorama's keypoints within this many columns and GUIDED_ROWS
 #   rings of its own position (wrap-around at 0/360 deg), ratio test inside the window.  None = brute force over the whole panorama.
 BEARING_MIN_RANGE = None
+# #132 (#130 offline): after the time fit, drop the pairs that zero motion explains at least as well as the fitted motion (only while the
+# sensor clearly moves: fitted translation > 2 x the median residual) - matches that move with the sensor or barely move pull the translation towards zero - and refit.  False = off.
+DROP_STATIONARY = False
 BEARING_MIN_PAIRS = 20
 GUIDED_WINDOW = None
 GUIDED_ROWS = 4
@@ -795,6 +798,19 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
         return None, None, 0
     M1, keep = fit_time(p[inl], tp[inl], q[inl], tq[inl], M0, model)
     match_motion.last_pairs = (p[inl][keep], tp[inl][keep], q[inl][keep], tq[inl][keep]) if M1 is not None else None   # #090
+    if DROP_STATIONARY and M1 is not None:                 # #132
+        pk, tpk, qk, tqk = p[inl][keep], tp[inl][keep], q[inl][keep], tq[inl][keep]
+        x = fit_time.last_params
+        r_fit = np.linalg.norm(residual(x, pk, tpk, qk, tqk).reshape(-1, 3), axis=1)
+        r_id = np.linalg.norm(residual(np.zeros_like(x), pk, tpk, qk, tqk).reshape(-1, 3), axis=1)
+        mv = r_id > r_fit                                   # the #130 rule; only while clearly moving (|t| > 2 x the median residual):
+        moving = np.linalg.norm(M1[:3, 3]) > 2.0 * np.median(r_fit)   # at rest zero motion fits every pair and the rule would drop half
+        if moving and (~mv).any() and mv.sum() >= MIN_INL:
+            Ms, keep_s = fit_time(pk[mv], tpk[mv], qk[mv], tqk[mv], M1, model)
+            if Ms is not None:
+                M1 = Ms
+                match_motion.last_pairs = (pk[mv][keep_s], tpk[mv][keep_s], qk[mv][keep_s], tqk[mv][keep_s])
+                keep = keep.copy(); idx = np.flatnonzero(keep); keep[idx[~mv]] = False; keep[idx[mv][~keep_s]] = False
     if BEARING_MIN_RANGE is not None and M1 is not None:   # #087: rotation from bearings, translation from 3D
         k = keep
         xb = refine_rotation_bearings(fit_time.last_params, p[inl][k], tp[inl][k], q[inl][k], tq[inl][k])
@@ -864,7 +880,7 @@ class ScanMotionEstimator:
                  save_rejected_dir=None, range_motion=None, range_hessian=10.0,
                  intensity_normalisation="none", panorama_width=None, bearing_min_range=None, guided_window=None,
                  guided_prediction="shift", multi_baseline=False, fuse_range=False, panorama_up=None,
-                 fit_sectors=None, whiten=None, cross_check=False, detect_scale=1.0):
+                 fit_sectors=None, whiten=None, cross_check=False, detect_scale=1.0, drop_stationary=False):
         """`stuck_min`, `floor_only`, `elev`, `range_`: the stuck-match filter (#025-#027);
         left at their defaults they read the module globals STUCK_* at each call.
         `detector`, `surf_hessian`, `surf_upright`: the panorama features, see make_detector.
@@ -891,8 +907,9 @@ class ScanMotionEstimator:
             global UP
             UP = int(panorama_up)
         global BUCKET_SECTORS, WHITEN, CROSS_CHECK              # #093: module-wide, as W
-        global DETECT_SCALE
+        global DETECT_SCALE, DROP_STATIONARY
         DETECT_SCALE = float(detect_scale)
+        DROP_STATIONARY = bool(drop_stationary)                 # #132
         BUCKET_SECTORS = None if fit_sectors is None else int(fit_sectors)
         WHITEN = None if whiten is None else tuple(float(v) for v in whiten)
         CROSS_CHECK = bool(cross_check)
