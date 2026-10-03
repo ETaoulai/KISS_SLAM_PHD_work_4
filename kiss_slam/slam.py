@@ -353,6 +353,7 @@ class KissSLAM:
         self._motion_futures = deque()     # motions submitted to it, oldest first
         self._rotvec_history = []          # image_deskew.rotation_smoothing (#047)
         self._validate_hist = []           # #109: image vs range rotation differences (running median)
+        self.ct_used_image = 0             # #115: scans whose CT registration started from the image motion
         self.n_validate_forced = 0
         self.n_two_start = 0                # image_deskew.two_start_deg: scans registered twice (#057)
         self.n_two_start_cv_won = 0         # ... of which the constant-velocity start fitted better
@@ -807,6 +808,8 @@ class KissSLAM:
         """
         odo = self.odometry
         M = self._image_motion(frame, timestamps, intensity, ring)
+        if self.image_cfg.ct_registration is not None:     # #115 (B.9): deskew inside the registration, start / end pose of the sweep
+            return self._register_ct(frame, timestamps, M)
         cv_deskew = self.image_cfg.deskew_from == "cv"   # #103: deskew with constant velocity (as KISS), the image only as the ICP start
         kiss_floor = self.image_cfg.two_start_kiss       # #108: the second start (and the fallback of a failed image motion) is KISS itself
         if M is None:                         # no image motion: no deskew (#012); ICP start per image_deskew.fallback
@@ -906,6 +909,44 @@ class KissSLAM:
         odo.last_pose = new_pose
         self._kept_deskew_delta = kept_delta
         return deskewed, source
+
+    def _register_ct(self, frame, timestamps, M):
+        """Registration with the deskew inside it (#115, kiss_slam.ct_registration): the start and end pose of the sweep, each point at its
+        own time between them, KISS's map / kernel / sigma, ECTLO's location and velocity constraints.  Initial end pose: the image motion
+        (ct_registration "image", constant velocity where it failed) or constant velocity ("cv": the LiDAR-only CT baseline)."""
+        from kiss_slam import ct_registration as ct
+        from scipy.spatial.transform import Rotation as _R
+
+        odo = self.odometry
+        t = np.asarray(timestamps, dtype=np.float64).ravel()
+        pts = np.asarray(frame, dtype=np.float64)
+        s = (t - t.min()) / max(t.max() - t.min(), 1e-9) if len(t) == len(pts) else np.full(len(pts), 1.0)
+        rng = np.linalg.norm(pts, axis=1)
+        keep = (rng > self._min_range) & (rng < self._max_range)
+        pts, s = pts[keep], s[keep]
+        v = odo.config.mapping.voxel_size
+        fds, s_fds = ct.voxel_down_sample(pts, s, 0.5 * v)
+        src, s_src = ct.voxel_down_sample(fds, s_fds, 1.5 * v)
+        fixed_sigma = self.image_cfg.fixed_sigma
+        sigma = odo.adaptive_threshold.get_threshold() if fixed_sigma is None else float(fixed_sigma)
+        use_image = self.image_cfg.ct_registration == "image" and M is not None
+        init_end = odo.last_pose @ (M if use_image else odo.last_delta)
+        if not hasattr(self, "_ct_prev_motion"):
+            self._ct_prev_motion = (np.zeros(3), np.zeros(3))
+        Tb, Te = ct.ct_register(src, s_src, np.asarray(odo.local_map.point_cloud()), odo.last_pose, init_end, self._ct_prev_motion, sigma,
+                                lam_loc=self.image_cfg.ct_lambda, lam_vel=self.image_cfg.ct_lambda)
+        self._ct_prev_motion = ct.motion(Tb, Te)
+        deskewed = ct.deskew_to_end(pts, s, Tb, Te)
+        fds_d = ct.deskew_to_end(fds, s_fds, Tb, Te)
+        src_d = ct.deskew_to_end(src, s_src, Tb, Te)
+        if fixed_sigma is None:
+            odo.adaptive_threshold.update_model_deviation(np.linalg.inv(init_end) @ Te)
+        odo.local_map.update(fds_d, Te)
+        odo.last_delta = np.linalg.inv(odo.last_pose) @ Te
+        odo.last_pose = Te
+        self._kept_deskew_delta = np.linalg.inv(Tb) @ Te            # non-identity: the pose stands at the end of the sweep
+        self.ct_used_image += int(use_image)
+        return deskewed, src_d
 
     def _record_pose_time(self, frame, timestamps, deskew_delta):
         t = np.asarray(timestamps, dtype=np.float64).ravel()
