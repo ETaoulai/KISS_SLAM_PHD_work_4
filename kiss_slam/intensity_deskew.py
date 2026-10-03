@@ -1019,6 +1019,8 @@ class ScanMotionEstimator:
         Mj, keep = fit_time(p, tp, q, tq, M1, self.model)
         if Mj is None:
             return M1, n
+        if self.multi_baseline == "translation":             # #131: rotation of the two-scan fit (better per scan), translation of the joint fit
+            Mj = Mj.copy(); Mj[:3, :3] = M1[:3, :3]
         self.n_joint += 1
         self.joint_pairs.append([len(st[0]) for st in sets])
         self.last_params = fit_time.last_params

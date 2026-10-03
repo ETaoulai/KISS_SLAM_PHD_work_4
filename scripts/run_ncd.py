@@ -24,6 +24,8 @@ image-motion estimator, for measuring run-to-run spread (#037).  --parallel: the
 worker process, overlapping the ICP (image_deskew.parallel); same trajectory, less time per scan.
 --intensity-scale: image_deskew.intensity_scale, default 255/1024 for the Ouster signal (#041).
 --parts / --rot-smooth: ablation of the image motion (image_deskew.use_parts / rotation_smoothing, #047).
+--cv-blend=adaptive [--cv-blend-window=20]: blend of the image motion and the constant velocity, weights from their recent errors
+against the ICP (image_deskew.cv_blend, #131).  --multi-baseline: the image-motion fit also with the matches of scan k-2 (#130); --multi-baseline=translation: only its translation (#131).
 --rot-cv: weight w of the constant-velocity rotation in the image rotation (image_deskew.rotation_cv_weight, #092; 0 = off).
 --save-frames: keep every deskewed scan (voxel-downsampled) in deskewed_frames.npz, for the map-sharpness test (#048);
 --save-fraction: only this random fraction of each scan's points (#049).
@@ -107,6 +109,13 @@ def main():
         config.image_deskew.use_parts = opts.get("parts", "full")
         config.image_deskew.rotation_smoothing = int(opts.get("rot-smooth", 1))
         config.image_deskew.rotation_cv_weight = float(opts.get("rot-cv", 0.0))
+        if "cv-blend" in opts:                                   # #131: adaptive blend of the image motion and the constant velocity
+            config.image_deskew.cv_blend = opts["cv-blend"]
+            config.image_deskew.cv_blend_window = int(opts.get("cv-blend-window", 20))
+        if "--multi-baseline" in sys.argv:                       # #130: the motion fit with the matches of k-2 <-> k too
+            config.image_deskew.multi_baseline = True
+        if opts.get("multi-baseline") == "translation":          # #131: only its translation, the rotation of the two-scan fit
+            config.image_deskew.multi_baseline = "translation"
         if "sectors" in opts:                                    # #093: equal weight per azimuth sector in the time fit
             config.image_deskew.fit_sectors = int(opts["sectors"])
         if "whiten" in opts:                                     # #093: range / azimuth / elevation whitening, one loss per point

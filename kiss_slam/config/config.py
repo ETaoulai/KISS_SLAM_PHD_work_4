@@ -187,6 +187,14 @@ class ImageDeskewConfig(BaseModel):
     # Weighted image rotation (#092): R = R_img exp(w log(R_img^T R_cv)), R_cv the rotation of the last ICP motion
     # (constant velocity), for BOTH uses of the image motion.  0 = the image rotation as measured (every result before #092).
     rotation_cv_weight: float = 0.0
+    # Adaptive blend of the image motion and the constant velocity (#131, no threshold): weight of the image = v_cv / (v_img + v_cv), v the
+    # mean squared rotation error of each prediction against the ICP result over the last cv_blend_window scans (causal); rotation by
+    # slerp, translation linear, for BOTH uses of the image motion.  "off" = the image motion as measured (every result before #131).
+    cv_blend: Literal["off", "adaptive"] = "off"
+    cv_blend_window: int = 20
+    # Longer baseline (#090 / #130): the motion fit also uses the matches of scan k-2 <-> k on the same curve.  False = every result before.
+    # "translation" (#131): only the translation from the joint fit, the rotation stays the two-scan one (the deskew needs the rotation per scan).
+    multi_baseline: Union[bool, Literal["translation"]] = False
     # Deskew source (#103): "image" = the image motion (every result before); "cv" = KISS's constant velocity (last_delta), the image motion
     # then only the ICP start (and two starts).  Where the image fails, "cv" is exactly KISS.
     deskew_from: Literal["image", "cv"] = "image"

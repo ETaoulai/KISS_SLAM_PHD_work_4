@@ -402,6 +402,7 @@ class KissSLAM:
                     whiten=self.image_cfg.whiten,
                     cross_check=self.image_cfg.cross_check,
                     detect_scale=self.image_cfg.detect_scale,
+                    multi_baseline=self.image_cfg.multi_baseline,                # #130
                     bearing_min_range=self.image_cfg.rotation_from_bearings,      # #087
                     guided_window=self.image_cfg.guided_matching_window,         # #087
                     guided_prediction=self.image_cfg.guided_prediction,          # #089
@@ -474,6 +475,9 @@ class KissSLAM:
         # Diagnostics log
         self.icp_metrics_log = []
         self._frame_counter = 0
+        self._blend_pending = None          # #131: (scan, image motion as measured, constant-velocity prediction) of the last blended scan
+        self._blend_errors = []             # #131: (image, constant-velocity) rotation errors against the ICP, deg
+        self.blend_weights = []
         self._prev_pose = np.eye(4)
 
     def get_closures(self):
@@ -765,6 +769,8 @@ class KissSLAM:
             rv = Rotation.from_matrix(Rm.T @ self.odometry.last_delta[:3, :3]).as_rotvec()
             M = M.copy()
             M[:3, :3] = Rm @ Rotation.from_rotvec(w * rv).as_matrix()
+        if self.image_cfg.cv_blend == "adaptive" and self._frame_counter >= 2:
+            M = self._cv_blend(M)
         parts = self.image_cfg.use_parts
         if parts == "translation":
             M = M.copy()
@@ -773,6 +779,29 @@ class KissSLAM:
             M = M.copy()
             M[:3, 3] = 0.0
         return M
+
+    def _cv_blend(self, M):
+        """#131: blend the image motion with the constant velocity, weights from their recent errors against the ICP (no threshold)."""
+        from scipy.spatial.transform import Rotation, Slerp
+
+        C = np.asarray(self.odometry.last_delta, dtype=np.float64)    # = the ICP motion of the previous scan
+        if self._blend_pending is not None and self._blend_pending[0] == self._frame_counter - 1:
+            _, Mp, Cp = self._blend_pending
+            ang = lambda A: np.degrees(np.linalg.norm(Rotation.from_matrix(C[:3, :3].T @ A[:3, :3]).as_rotvec()))
+            self._blend_errors.append((ang(Mp), ang(Cp)))
+            del self._blend_errors[:-self.image_cfg.cv_blend_window]
+        self._blend_pending = (self._frame_counter, M.copy(), C.copy())
+        if len(self._blend_errors) < 3:
+            self.blend_weights.append(1.0)
+            return M
+        e = np.asarray(self._blend_errors)
+        vi, vc = np.mean(e[:, 0] ** 2) + 1e-9, np.mean(e[:, 1] ** 2) + 1e-9
+        w = vc / (vi + vc)
+        self.blend_weights.append(w)
+        B = np.eye(4)
+        B[:3, :3] = Slerp([0, 1], Rotation.from_matrix(np.stack([C[:3, :3], M[:3, :3]])))(w).as_matrix()
+        B[:3, 3] = (1 - w) * C[:3, 3] + w * M[:3, 3]
+        return B
 
     @property
     def image_motion_parallel(self):
