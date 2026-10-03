@@ -203,6 +203,7 @@ class ImageDeskewConfig(BaseModel):
     # "image" = the end pose initialised from the image motion; "cv" = from constant velocity (LiDAR-only CT baseline); None = off.
     ct_registration: Optional[Literal["image", "cv", "joint"]] = None   # "joint": image start + the image matches as residuals in the cost
     ct_image_weight: float = 1.0       # #115 joint: weight of one image match relative to one geometric point
+    ct_max_iter: int = 30              # #115: Gauss-Newton iterations of the CT registration
     ct_lambda: float = 0.1             # weight of the location / velocity constraints, per point (ECTLO: 0.1)
     # Plausibility gate (#054), each None = off (every result before #054): an image motion is rejected when fewer
     # than gate_min_matches matches support it, when it rotates more than gate_max_rotation_deg in one scan, or when its
@@ -230,7 +231,7 @@ class ImageDeskewConfig(BaseModel):
     # Intensity of the panorama (#075): "none" = intensity x intensity_scale (every result before #075); "gain" = per scan,
     # scaled so its 99th percentile is 255 (no per-sensor scale; Hilti failures 447 -> 60 on UZH); "gain_clahe" = gain +
     # local contrast equalisation.  Panorama columns: None = 1024 (every result before #075); 2048 = the Hilti Ouster's own.
-    intensity_normalisation: Literal["none", "gain", "gain_clahe", "range2", "range_smooth"] = "none"   # range2 / range_smooth: #118
+    intensity_normalisation: Literal["none", "gain", "gain_clahe", "range2", "range_smooth", "range1", "log", "logr2"] = "none"   # #118, #123
     panorama_width: Optional[Union[int, Literal["auto"]]] = None   # "auto" (#093): the sensor's own columns per revolution
     # Vertical upscaling of the panorama for the detector (#089).  None = 8 (every result before).  4 suits 128-beam sensors (0.7 deg per
     # ring: 8 over-samples 4x) - on underground_hard -26 % image time and -10 % rotation error.
