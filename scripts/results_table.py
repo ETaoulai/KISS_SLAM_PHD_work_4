@@ -142,7 +142,9 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "kissfloor108": "default of after_091, second start (and image-failure fallback) = KISS itself, CV deskew + start (#108)",
         "valid109": "KISS floor (#108) + per-scan range validation of the image motion (range validate, k = 3) (#109)",
         "always109": "KISS floor (#108) + every scan registered from all starts, best map fit (#109)",
-        "autow111": "default of after_091, panorama columns of the sensor only (upscale 8 as before) (#111)"}
+        "autow111": "default of after_091, panorama columns of the sensor only (upscale 8 as before) (#111)",
+        "rsmooth121": "default of after_091, intensity / smooth range curve of the scan (range_smooth, #118 / #121)",
+        "rsq121": "default of after_091, intensity x r^2 (range2, Ouster sensors only, #118 / #121)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:
