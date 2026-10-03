@@ -56,7 +56,7 @@ def motion(Tb, Te):
 
 
 def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, sigma, lam_loc=0.1, lam_vel=0.1,
-                max_iter=30, tol=1e-4, tree=None, img=None, img_weight=1.0, img_kernel=None):
+                max_iter=30, tol=1e-4, tree=None, img=None, img_weight=1.0, img_kernel=None, voxel=None):
     """(T_b, T_e) of the sweep.  source: points in the sensor frame as measured (NOT deskewed), s_src their times in [0, 1].
     img (#115 joint): (world positions of the previous scan's matched points, placed by its own solved sweep - fixed; the current scan's
     matched points q, raw; their times in [0, 1]) - each match adds the residual x(q) - world(p), weighted img_weight x a geometric point,
@@ -68,7 +68,9 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
     w_prev, v_prev = prev_motion
     for _ in range(max_iter):
         x = place(source, s_src, Tb, Te)
-        dist, idx = tree.query(x, distance_upper_bound=3.0 * sigma, workers=-1)
+        # KISS searches the closest neighbour only in the 27 voxels around the point (<= 2 sqrt(3) voxel sizes), THEN applies 3 sigma
+        bound = 3.0 * sigma if voxel is None else min(3.0 * sigma, 2.0 * np.sqrt(3.0) * voxel)
+        dist, idx = tree.query(x, distance_upper_bound=bound, workers=-1)
         ok = np.isfinite(dist)
         n = int(ok.sum())
         if n < 10:

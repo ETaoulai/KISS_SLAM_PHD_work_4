@@ -946,7 +946,7 @@ class KissSLAM:
             self.ct_joint_scans += 1
         Tb, Te = ct.ct_register(src, s_src, np.asarray(odo.local_map.point_cloud()), odo.last_pose, init_end, self._ct_prev_motion, sigma,
                                 lam_loc=self.image_cfg.ct_lambda, lam_vel=self.image_cfg.ct_lambda, img=img,
-                                img_weight=self.image_cfg.ct_image_weight)
+                                img_weight=self.image_cfg.ct_image_weight, voxel=v)
         self._ct_prev_motion = ct.motion(Tb, Te)
         self._ct_prev_sweep = (Tb, Te)
         deskewed = ct.deskew_to_end(pts, s, Tb, Te)
