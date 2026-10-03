@@ -67,6 +67,29 @@ def main():
                 past = dis[max(0, k - W):k]; past = past[np.isfinite(past)]
                 use[k] = len(past) < 10 or dis[k] > c * np.median(past)
             rows.append((f"gate c={c:g}", np.where(use[:, None, None], M, C), use))
+        # #131 adaptive, no threshold: each predictor's recent error against the ICP result of the previous scans (causal: the ICP of
+        # scan j is known before scan k > j is deskewed).  "track-best": the predictor with the lower mean error over the last w scans;
+        # "blend": rotation / translation interpolated with the inverse-variance weight of the two recent errors.
+        Iq = np.full((n, 4, 4), np.nan); Iq[1:] = np.linalg.inv(P[:n - 1]) @ P[1:n]
+        gi = img_ok & np.isfinite(Iq).all(axis=(1, 2)) & np.isfinite(C).all(axis=(1, 2))
+        ri, rc = np.full(n, np.nan), np.full(n, np.nan)
+        ri[gi] = rot_deg(np.linalg.inv(Iq[gi]) @ M[gi]); rc[gi] = rot_deg(np.linalg.inv(Iq[gi]) @ C[gi])
+        from scipy.spatial.transform import Slerp
+        for ww in (5, 20):
+            pick = np.zeros(n, bool); B = C.copy(); wimg = np.zeros(n)
+            for k in range(n):
+                if not img_ok[k] or not np.isfinite(C[k]).all():
+                    continue
+                a, b = ri[max(0, k - ww):k], rc[max(0, k - ww):k]; m = np.isfinite(a) & np.isfinite(b)
+                if m.sum() < 3:
+                    pick[k] = True; wimg[k] = 1.0; B[k] = M[k]; continue
+                vi, vc = np.mean(a[m] ** 2) + 1e-9, np.mean(b[m] ** 2) + 1e-9
+                pick[k] = vi <= vc
+                wimg[k] = vc / (vi + vc)
+                sl = Slerp([0, 1], R.from_matrix(np.stack([C[k][:3, :3], M[k][:3, :3]])))
+                B[k] = np.eye(4); B[k][:3, :3] = sl(wimg[k]).as_matrix(); B[k][:3, 3] = (1 - wimg[k]) * C[k][:3, 3] + wimg[k] * M[k][:3, 3]
+            rows.insert(-1, (f"track-best w={ww}", np.where(pick[:, None, None], M, C), pick))
+            rows.insert(-1, (f"blend w={ww}", B, wimg > 0.5))
         ei = np.full(n, np.inf); ec = np.full(n, np.inf)
         ei[img_ok & good] = rot_deg(np.linalg.inv(D[img_ok & good]) @ M[img_ok & good])
         ec[good] = rot_deg(np.linalg.inv(D[good]) @ C[good])
