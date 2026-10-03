@@ -399,6 +399,7 @@ class KissSLAM:
                     panorama_width=self.image_cfg.panorama_width,
                     panorama_up=self.image_cfg.panorama_up,                      # #089
                     fit_sectors=self.image_cfg.fit_sectors,                      # #093
+                    sectors_part=self.image_cfg.fit_sectors_part,                # #135
                     whiten=self.image_cfg.whiten,
                     cross_check=self.image_cfg.cross_check,
                     detect_scale=self.image_cfg.detect_scale,

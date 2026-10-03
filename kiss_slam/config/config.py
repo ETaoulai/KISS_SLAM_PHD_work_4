@@ -246,6 +246,7 @@ class ImageDeskewConfig(BaseModel):
     # (sigma_r m, sigma_az rad, sigma_el rad), residuals in range / azimuth / elevation over their uncertainty, one robust loss per point;
     # cross_check = keep only mutual best matches.
     fit_sectors: Optional[int] = None
+    fit_sectors_part: Literal["both", "rotation"] = "both"          # #135: "rotation" = sector weights for the rotation only
     whiten: Optional[List[float]] = None
     cross_check: bool = False
     # Scale of the panorama for the feature detector only (#093): < 1 shrinks it before SURF (speed), keypoints mapped back.  1 = unchanged.

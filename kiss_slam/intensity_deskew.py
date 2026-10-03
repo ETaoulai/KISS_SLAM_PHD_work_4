@@ -451,6 +451,9 @@ FIT_JAC = "analytic"
 #   instead of one per x / y / z.  None = off.
 # CROSS_CHECK: keep a match only when it is also the best one in the reverse direction (later -> earlier panorama, the same window).
 BUCKET_SECTORS = None
+# #135: "rotation" = the sector weights only for the ROTATION (#134: sectors improve the rotation, the translation needs the dense near
+# pairs) - the translation from the same pairs fitted without sectors.  "both" = every result before.
+SECTORS_PART = "both"
 WHITEN, WHITEN_FSCALE = None, 1.5
 CROSS_CHECK = False
 
@@ -797,6 +800,17 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
     if M0 is None:
         return None, None, 0
     M1, keep = fit_time(p[inl], tp[inl], q[inl], tq[inl], M0, model)
+    if SECTORS_PART == "rotation" and globals()["BUCKET_SECTORS"] is not None and M1 is not None:   # #135
+        saved_sec = globals()["BUCKET_SECTORS"]
+        globals()["BUCKET_SECTORS"] = None
+        try:
+            params_sec = fit_time.last_params
+            Mn, _ = fit_time(p[inl], tp[inl], q[inl], tq[inl], M0, model)
+        finally:
+            globals()["BUCKET_SECTORS"] = saved_sec
+        fit_time.last_params = params_sec
+        if Mn is not None:
+            M1 = M1.copy(); M1[:3, 3] = Mn[:3, 3]
     match_motion.last_pairs = (p[inl][keep], tp[inl][keep], q[inl][keep], tq[inl][keep]) if M1 is not None else None   # #090
     if DROP_STATIONARY and M1 is not None:                 # #132
         pk, tpk, qk, tqk = p[inl][keep], tp[inl][keep], q[inl][keep], tq[inl][keep]
@@ -880,7 +894,7 @@ class ScanMotionEstimator:
                  save_rejected_dir=None, range_motion=None, range_hessian=10.0,
                  intensity_normalisation="none", panorama_width=None, bearing_min_range=None, guided_window=None,
                  guided_prediction="shift", multi_baseline=False, fuse_range=False, panorama_up=None,
-                 fit_sectors=None, whiten=None, cross_check=False, detect_scale=1.0, drop_stationary=False):
+                 fit_sectors=None, whiten=None, cross_check=False, detect_scale=1.0, drop_stationary=False, sectors_part="both"):
         """`stuck_min`, `floor_only`, `elev`, `range_`: the stuck-match filter (#025-#027);
         left at their defaults they read the module globals STUCK_* at each call.
         `detector`, `surf_hessian`, `surf_upright`: the panorama features, see make_detector.
@@ -911,6 +925,8 @@ class ScanMotionEstimator:
         DETECT_SCALE = float(detect_scale)
         DROP_STATIONARY = bool(drop_stationary)                 # #132
         BUCKET_SECTORS = None if fit_sectors is None else int(fit_sectors)
+        global SECTORS_PART
+        SECTORS_PART = sectors_part
         WHITEN = None if whiten is None else tuple(float(v) for v in whiten)
         CROSS_CHECK = bool(cross_check)
         global BEARING_MIN_RANGE, GUIDED_WINDOW               # #087: module-wide, as W

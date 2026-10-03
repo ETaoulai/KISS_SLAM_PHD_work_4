@@ -123,6 +123,7 @@ def main():
             config.image_deskew.drop_stationary = True
         if "sectors" in opts:                                    # #093: equal weight per azimuth sector in the time fit
             config.image_deskew.fit_sectors = int(opts["sectors"])
+            config.image_deskew.fit_sectors_part = opts.get("sectors-part", "both")   # #135
         if "whiten" in opts:                                     # #093: range / azimuth / elevation whitening, one loss per point
             config.image_deskew.whiten = [float(v) for v in opts["whiten"].split(",")]
         if "detect-scale" in opts:                               # #093: panorama scale for the detector only (speed)
