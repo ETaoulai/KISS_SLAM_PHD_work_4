@@ -354,6 +354,7 @@ class KissSLAM:
         self._rotvec_history = []          # image_deskew.rotation_smoothing (#047)
         self._validate_hist = []           # #109: image vs range rotation differences (running median)
         self.ct_used_image = 0             # #115: scans whose CT registration started from the image motion
+        self.ct_joint_scans = 0            # #115 joint: scans with image-match residuals in the CT cost
         self.n_validate_forced = 0
         self.n_two_start = 0                # image_deskew.two_start_deg: scans registered twice (#057)
         self.n_two_start_cv_won = 0         # ... of which the constant-velocity start fitted better
@@ -737,6 +738,8 @@ class KissSLAM:
                 M = self._motion_futures.popleft().result()
             else:
                 M, n_inl = self._image_motion_est.motion(frame, timestamps, intensity, ring)
+                import kiss_slam.intensity_deskew as _idsk2
+                self._last_pairs = _idsk2.match_motion.last_pairs if M is not None else None   # #115 joint: the matches behind M
                 # Diagnostic record (#086): the image motion of every scan as estimated, and its RANSAC inliers.
                 self.image_motion_log.append((self._frame_counter, np.nan if M is None else np.asarray(M, float), n_inl))
         if M is None:                         # failed, or rejected by the plausibility gate (#054)
@@ -929,13 +932,23 @@ class KissSLAM:
         src, s_src = ct.voxel_down_sample(fds, s_fds, 1.5 * v)
         fixed_sigma = self.image_cfg.fixed_sigma
         sigma = odo.adaptive_threshold.get_threshold() if fixed_sigma is None else float(fixed_sigma)
-        use_image = self.image_cfg.ct_registration == "image" and M is not None
+        use_image = self.image_cfg.ct_registration in ("image", "joint") and M is not None
         init_end = odo.last_pose @ (M if use_image else odo.last_delta)
         if not hasattr(self, "_ct_prev_motion"):
             self._ct_prev_motion = (np.zeros(3), np.zeros(3))
+        img = None
+        pairs = getattr(self, "_last_pairs", None)
+        prev_sweep = getattr(self, "_ct_prev_sweep", None)
+        if self.image_cfg.ct_registration == "joint" and pairs is not None and prev_sweep is not None:
+            p, tp, q, tq = pairs                                       # times in sweeps from the start of THIS scan: p in [-1, 0), q in [0, 1)
+            pw = ct.place(np.asarray(p, float), np.clip(np.asarray(tp, float) + 1.0, 0.0, 1.0), *prev_sweep)
+            img = (pw, np.asarray(q, float), np.clip(np.asarray(tq, float), 0.0, 1.0))
+            self.ct_joint_scans += 1
         Tb, Te = ct.ct_register(src, s_src, np.asarray(odo.local_map.point_cloud()), odo.last_pose, init_end, self._ct_prev_motion, sigma,
-                                lam_loc=self.image_cfg.ct_lambda, lam_vel=self.image_cfg.ct_lambda)
+                                lam_loc=self.image_cfg.ct_lambda, lam_vel=self.image_cfg.ct_lambda, img=img,
+                                img_weight=self.image_cfg.ct_image_weight)
         self._ct_prev_motion = ct.motion(Tb, Te)
+        self._ct_prev_sweep = (Tb, Te)
         deskewed = ct.deskew_to_end(pts, s, Tb, Te)
         fds_d = ct.deskew_to_end(fds, s_fds, Tb, Te)
         src_d = ct.deskew_to_end(src, s_src, Tb, Te)

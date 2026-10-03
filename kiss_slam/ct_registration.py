@@ -56,8 +56,11 @@ def motion(Tb, Te):
 
 
 def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, sigma, lam_loc=0.1, lam_vel=0.1,
-                max_iter=30, tol=1e-4, tree=None):
-    """(T_b, T_e) of the sweep.  source: points in the sensor frame as measured (NOT deskewed), s_src their times in [0, 1]."""
+                max_iter=30, tol=1e-4, tree=None, img=None, img_weight=1.0, img_kernel=None):
+    """(T_b, T_e) of the sweep.  source: points in the sensor frame as measured (NOT deskewed), s_src their times in [0, 1].
+    img (#115 joint): (world positions of the previous scan's matched points, placed by its own solved sweep - fixed; the current scan's
+    matched points q, raw; their times in [0, 1]) - each match adds the residual x(q) - world(p), weighted img_weight x a geometric point,
+    Geman-McClure with img_kernel (default sigma)."""
     Tb, Te = T_prev_end.copy(), T_init_end.copy()
     if len(map_points) == 0 or len(source) < 10:
         return Tb, Te
@@ -80,6 +83,17 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
         J[:, :, 3:6] = (1.0 - s)[:, None, None] * np.eye(3)
         J[:, :, 6:9] = s[:, None, None] * Jr
         J[:, :, 9:12] = s[:, None, None] * np.eye(3)
+        if img is not None and len(img[0]) >= 3:                    # image matches as residuals (joint)
+            pw, q_img, s_img = img
+            xq = place(q_img, s_img, Tb, Te)
+            ri = xq - pw
+            ki = img_kernel if img_kernel is not None else sigma
+            wi = img_weight * ki ** 2 / (ki + (ri ** 2).sum(1)) ** 2
+            Rq = xq - ((1.0 - s_img)[:, None] * Tb[:3, 3] + s_img[:, None] * Te[:3, 3])
+            Ji = np.zeros((len(ri), 3, 12)); Jri = -_skew(Rq)
+            Ji[:, :, 0:3] = (1.0 - s_img)[:, None, None] * Jri; Ji[:, :, 3:6] = (1.0 - s_img)[:, None, None] * np.eye(3)
+            Ji[:, :, 6:9] = s_img[:, None, None] * Jri; Ji[:, :, 9:12] = s_img[:, None, None] * np.eye(3)
+            r = np.concatenate([r, ri]); w = np.concatenate([w, wi]); J = np.concatenate([J, Ji])
         Jw = J * w[:, None, None]
         H = np.einsum("nki,nkj->ij", Jw, J)
         g = np.einsum("nki,nk->i", Jw, r)

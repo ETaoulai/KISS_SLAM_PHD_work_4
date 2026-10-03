@@ -4,7 +4,7 @@
     python scripts/run_ncd.py <arm> <sequence> <out dir> [n_scans] [--config=<yaml>] [--seed=N] [--parallel]
                               [--topic=/os_cloud_node/points] [--intensity-scale=0.249] [--diag]
                               [--parts=full|translation|rotation] [--rot-smooth=k] [--rot-cv=w] [--save-frames=<voxel m>] [--save-fraction=f]
-                              [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate|validate] [--validate-k=3] [--two-start-always] [--voxel=auto] [--ct=image|cv] [--ct-lambda=0.1]
+                              [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate|validate] [--validate-k=3] [--two-start-always] [--voxel=auto] [--ct=image|cv|joint] [--ct-lambda=0.1] [--ct-image-weight=1]
                               [--rotation-weight=100] [--save-failed]
                               [--normalise=gain|gain_clahe] [--panorama-width=2048|auto] [--panorama-up=4|auto] [--image-start=false]
                               [--stuck=none|<m>] [--sigma=adaptive|<m>] [--deskew=false]
@@ -171,6 +171,8 @@ def main():
             config.image_deskew.guided_prediction = opts["guided-predict"]
         if "ct" in opts:                                         # #115 (B.9): deskew inside the registration, init image | cv
             config.image_deskew.ct_registration = opts["ct"]
+        if "ct-image-weight" in opts:
+            config.image_deskew.ct_image_weight = float(opts["ct-image-weight"])
         if "ct-lambda" in opts:
             config.image_deskew.ct_lambda = float(opts["ct-lambda"])
         if "validate-k" in opts:                                 # #109: range validation threshold (x running median)

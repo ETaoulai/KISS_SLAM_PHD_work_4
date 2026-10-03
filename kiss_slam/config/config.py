@@ -201,7 +201,8 @@ class ImageDeskewConfig(BaseModel):
     two_start_always: bool = False
     # #115 (B.9): deskew INSIDE the registration (kiss_slam/ct_registration.py): start and end pose of the sweep, points at their own time.
     # "image" = the end pose initialised from the image motion; "cv" = from constant velocity (LiDAR-only CT baseline); None = off.
-    ct_registration: Optional[Literal["image", "cv"]] = None
+    ct_registration: Optional[Literal["image", "cv", "joint"]] = None   # "joint": image start + the image matches as residuals in the cost
+    ct_image_weight: float = 1.0       # #115 joint: weight of one image match relative to one geometric point
     ct_lambda: float = 0.1             # weight of the location / velocity constraints, per point (ECTLO: 0.1)
     # Plausibility gate (#054), each None = off (every result before #054): an image motion is rejected when fewer
     # than gate_min_matches matches support it, when it rotates more than gate_max_rotation_deg in one scan, or when its
