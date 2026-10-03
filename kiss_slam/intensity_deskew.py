@@ -573,6 +573,29 @@ def _detect(detector, img):
     return kps, desc
 
 
+def range_normalise(inten, rng, ok, mode):
+    """#118: "range2" = I x r^2 (the inverse-square falloff); "range_smooth" = I / f(r), f the median intensity of THIS scan per log-range
+    bin (0.5-100 m, 24 bins with >= 30 points), smoothed over 3 bins and interpolated in log r - measured from the scan, no calibration file,
+    no bin steps (#025's table had them).  Both rescaled so the 99th percentile of the valid points is 255."""
+    out = inten.astype(float).copy()
+    if mode == "range2":
+        out = out * rng ** 2
+    else:
+        edges = np.geomspace(0.5, 100.0, 25)
+        lr = np.log(np.clip(rng[ok], 0.5, 100.0))
+        b = np.clip(np.digitize(rng[ok], edges) - 1, 0, 23)
+        med = np.array([np.median(out[ok][b == k]) if (b == k).sum() >= 30 else np.nan for k in range(24)])
+        centers = 0.5 * (np.log(edges[:-1]) + np.log(edges[1:]))
+        good = np.isfinite(med) & (med > 0)
+        if good.sum() < 3:
+            return inten
+        m = np.convolve(np.pad(med[good], 1, mode="edge"), np.ones(3) / 3, mode="valid")
+        f = np.interp(np.log(np.clip(rng, 0.5, 100.0)), centers[good], m)
+        out = out / np.maximum(f, 1e-6)
+    p99 = np.percentile(out[ok], 99)
+    return out * (255.0 / max(p99, 1e-9))
+
+
 def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
     """Panorama + keypoints/descriptors (SIFT or SURF, see make_detector) of one raw scan:
     (P, T, valid, keypoints, descriptors, t_start, panorama image).  match_motion uses the first six.
@@ -581,6 +604,8 @@ def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
     intensity scaled so that its 99th percentile (points beyond MIN_RANGE) is 255; "gain_clahe" = gain, then local contrast
     equalisation of the image (CLAHE 3.0, tiles 4 x 16, as the range image, #058)."""
     ok = ~np.isnan(xyz).any(axis=1) & (np.linalg.norm(xyz, axis=1) > MIN_RANGE)
+    if normalisation in ("range2", "range_smooth") and ok.sum() > 100:   # #118: range normalisation of the intensity
+        inten = range_normalise(inten, np.linalg.norm(xyz, axis=1), ok, normalisation)
     if normalisation in ("gain", "gain_clahe") and ok.any():
         inten = inten * (255.0 / max(float(np.percentile(inten[ok], 99)), 1e-6))
     big, P, T, valid = panorama(xyz[ok], ts[ok], inten[ok], ring[ok])
