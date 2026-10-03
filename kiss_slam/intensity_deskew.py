@@ -608,6 +608,8 @@ def range_normalise(inten, rng, ok, mode):
         out = np.log1p(np.maximum(out, 0.0) * rng ** 2)
     elif mode == "rangefit":                           # #124: I x r^k, k = the falloff exponent of THIS scan's far field
         out = out * rng ** fit_falloff(out[ok], rng[ok])
+    elif mode == "logrf":                              # #125: log(1 + I x r^k) - the fitted range correction, then log compression
+        out = np.log1p(np.maximum(out, 0.0) * rng ** fit_falloff(out[ok], rng[ok]))
     else:
         edges = np.geomspace(0.5, 100.0, 25)
         lr = np.log(np.clip(rng[ok], 0.5, 100.0))
@@ -632,7 +634,7 @@ def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
     intensity scaled so that its 99th percentile (points beyond MIN_RANGE) is 255; "gain_clahe" = gain, then local contrast
     equalisation of the image (CLAHE 3.0, tiles 4 x 16, as the range image, #058)."""
     ok = ~np.isnan(xyz).any(axis=1) & (np.linalg.norm(xyz, axis=1) > MIN_RANGE)
-    if normalisation in ("range2", "range_smooth", "range1", "log", "logr2", "rangefit") and ok.sum() > 100:   # #118 / #123: range / log normalisation
+    if normalisation in ("range2", "range_smooth", "range1", "log", "logr2", "rangefit", "logrf") and ok.sum() > 100:   # #118 / #123: range / log normalisation
         inten = range_normalise(inten, np.linalg.norm(xyz, axis=1), ok, normalisation)
     if normalisation in ("gain", "gain_clahe") and ok.any():
         inten = inten * (255.0 / max(float(np.percentile(inten[ok], 99)), 1e-6))

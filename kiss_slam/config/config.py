@@ -231,7 +231,7 @@ class ImageDeskewConfig(BaseModel):
     # Intensity of the panorama (#075): "none" = intensity x intensity_scale (every result before #075); "gain" = per scan,
     # scaled so its 99th percentile is 255 (no per-sensor scale; Hilti failures 447 -> 60 on UZH); "gain_clahe" = gain +
     # local contrast equalisation.  Panorama columns: None = 1024 (every result before #075); 2048 = the Hilti Ouster's own.
-    intensity_normalisation: Literal["none", "gain", "gain_clahe", "range2", "range_smooth", "range1", "log", "logr2", "rangefit"] = "none"   # #118, #123, #124
+    intensity_normalisation: Literal["none", "gain", "gain_clahe", "range2", "range_smooth", "range1", "log", "logr2", "rangefit", "logrf"] = "none"   # #118, #123-#125
     panorama_width: Optional[Union[int, Literal["auto"]]] = None   # "auto" (#093): the sensor's own columns per revolution
     # Vertical upscaling of the panorama for the detector (#089).  None = 8 (every result before).  4 suits 128-beam sensors (0.7 deg per
     # ring: 8 over-samples 4x) - on underground_hard -26 % image time and -10 % rotation error.
