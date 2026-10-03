@@ -573,6 +573,26 @@ def _detect(detector, img):
     return kps, desc
 
 
+def fit_falloff(inten, rng):
+    """Falloff exponent k (intensity ~ r^-k) of one scan (#124): median intensity per log-range bin (1-100 m, >= 30 points), the slope of
+    log(median) on log(r) from the brightest bin outward (the near field rises or saturates), k = -slope clipped to [0, 3]; 0 when there are
+    fewer than 3 such bins.  Measured: Ouster OS0-128 ~2, Hesai QT64 ~1.5 (#124)."""
+    edges = np.geomspace(1.0, 100.0, 21)
+    b = np.digitize(rng, edges) - 1
+    med = np.array([np.median(inten[b == k]) if (b == k).sum() >= 30 else np.nan for k in range(20)])
+    c = np.sqrt(edges[:-1] * edges[1:])
+    good = np.isfinite(med) & (med > 0)
+    if good.sum() < 3:
+        return 0.0
+    peak = int(np.nanargmax(np.where(good, med, -np.inf)))
+    far = good & (np.arange(20) >= peak)
+    if far.sum() < 3:
+        return 0.0
+    slope = np.polyfit(np.log(c[far]), np.log(med[far]), 1)[0]
+    fit_falloff.last = float(np.clip(-slope, 0.0, 3.0))
+    return fit_falloff.last
+
+
 def range_normalise(inten, rng, ok, mode):
     """#118: "range2" = I x r^2 (the inverse-square falloff); "range_smooth" = I / f(r), f the median intensity of THIS scan per log-range
     bin (0.5-100 m, 24 bins with >= 30 points), smoothed over 3 bins and interpolated in log r - measured from the scan, no calibration file,
@@ -586,6 +606,8 @@ def range_normalise(inten, rng, ok, mode):
         out = np.log1p(np.maximum(out, 0.0))
     elif mode == "logr2":                              # #123: log(1 + I x r^2)
         out = np.log1p(np.maximum(out, 0.0) * rng ** 2)
+    elif mode == "rangefit":                           # #124: I x r^k, k = the falloff exponent of THIS scan's far field
+        out = out * rng ** fit_falloff(out[ok], rng[ok])
     else:
         edges = np.geomspace(0.5, 100.0, 25)
         lr = np.log(np.clip(rng[ok], 0.5, 100.0))
@@ -610,7 +632,7 @@ def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
     intensity scaled so that its 99th percentile (points beyond MIN_RANGE) is 255; "gain_clahe" = gain, then local contrast
     equalisation of the image (CLAHE 3.0, tiles 4 x 16, as the range image, #058)."""
     ok = ~np.isnan(xyz).any(axis=1) & (np.linalg.norm(xyz, axis=1) > MIN_RANGE)
-    if normalisation in ("range2", "range_smooth", "range1", "log", "logr2") and ok.sum() > 100:   # #118 / #123: range / log normalisation
+    if normalisation in ("range2", "range_smooth", "range1", "log", "logr2", "rangefit") and ok.sum() > 100:   # #118 / #123: range / log normalisation
         inten = range_normalise(inten, np.linalg.norm(xyz, axis=1), ok, normalisation)
     if normalisation in ("gain", "gain_clahe") and ok.any():
         inten = inten * (255.0 / max(float(np.percentile(inten[ok], 99)), 1e-6))
