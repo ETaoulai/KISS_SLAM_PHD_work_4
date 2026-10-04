@@ -82,3 +82,12 @@ python scripts/evaluate_ntu.py eee_03 <run dir> --out=<dir>
    μετράται το GT»· `leica_prism.yaml`: T_Body_Prism = (−0.294, −0.012, −0.273) m)· GT = `/leica/pose/relative` μέσα στο bag· δύο OS1-16, 16 ακτίνες
    = πανόραμα 16 γραμμών, πιθανό όριο της μεθόδου. eee_01/02: αποσυμπίεση στο ext4 μόλις τελειώσει η λήψη (47 GB ελεύθερα στο ext4).
 4. Προσθήκη στο `scripts/results_table.py` (SEQUENCES) όταν υπάρχουν runs.
+
+
+## NTU VIRAL — όλες οι ακολουθίες (4/10/2026)
+
+Πέρα από τις eee_01–03: **nya_01–03, sbs_01–03, rtp_01–03, tnp_01–03, spms_01–03** (15, 354–584 s, ~60 000 σαρώσεις, OS1-16 οριζόντιος `/os1_cloud_node1/points`).
+Αρχεία: DR-NTU (Data) `researchdata.ntu.edu.sg/api/access/datafile/<id>`, αποσυμπιεσμένα στον εξωτερικό SSD `kiss_data_ssd/ntu_viral/<seq>/` (zip διαγραμμένα, ΑΠΟΦΑΣΗ Μ.Τ.),
+σύνδεσμοι στο `~/kiss_data/ntu_viral/<seq>`· GT στο `ntuviral_gt/<seq>/ground_truth.csv` (ήδη). Στο `kiss_runs/all_seqs.tsv` (42 γραμμές· οι 27 παλιές στο `all_seqs_27.tsv`).
+**Προσοχή:** rtp / tnp / spms έχουν την παλιά μορφή βαθμονόμησης (`T_Body2Lidar`, το πρίσμα ως `T_Body2Imu`, ίδιες τιμές) — το `evaluate_ntu.py` δέχεται πλέον και τα δύο ονόματα.
+spms: πληρότητα 99 % σε όλα τα runs (και του KISS).

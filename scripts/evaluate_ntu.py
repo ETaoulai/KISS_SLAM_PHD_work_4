@@ -41,6 +41,9 @@ T_B_PRISM = np.array([-0.293656, -0.012288, -0.273095])      # notebook (= leica
 def opencv_matrix(path, name):
     """A 4x4 !!opencv-matrix (T_Body_Lidar, T_Body_Prism) from the dataset's OpenCV YAML."""
     text = Path(path).read_text()
+    # rtp / tnp / spms ship the older key names (T_Body2Lidar, the prism as T_Body2Imu), same values (checked 4/10)
+    aliases = {"T_Body_Lidar": ["T_Body_Lidar", "T_Body2Lidar"], "T_Body_Prism": ["T_Body_Prism", "T_Body2Prism", "T_Body2Imu"]}
+    name = next((n for n in aliases.get(name, [name]) if n in text), name)
     block = text[text.index(name):]
     data = re.search(r"data:\s*\[([^\]]*)\]", block)[1]
     return np.array([float(x) for x in data.replace("\n", " ").split(",")]).reshape(4, 4)
