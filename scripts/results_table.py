@@ -151,7 +151,9 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "fr132": "default of after_091, range-panorama matches fused into the motion fit (#132 / #135)",
         "ds132": "default of after_091, drop pairs zero motion explains (#132 / #135)",
         "sr135": "default of after_091, sector weights for the rotation only (#135 / #139)",
-        "bd137": "default of after_091, adaptive blend for the DESKEW only, ICP start = image (#137 / #138 / #140)"}
+        "bd137": "default of after_091, adaptive blend for the DESKEW only, ICP start = image (#137 / #138 / #140)",
+        "cmb141": "default of after_091, COMBINATION: blend for the deskew + sector weights for the rotation (#141 / #142 / #144)",
+        "fbk146": "default of after_091, fallback = KISS on scans where the image fails (#146 / #147)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:
