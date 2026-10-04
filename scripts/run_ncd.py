@@ -4,7 +4,7 @@
     python scripts/run_ncd.py <arm> <sequence> <out dir> [n_scans] [--config=<yaml>] [--seed=N] [--parallel]
                               [--topic=/os_cloud_node/points] [--intensity-scale=0.249] [--diag]
                               [--parts=full|translation|rotation] [--rot-smooth=k] [--rot-cv=w] [--save-frames=<voxel m>] [--save-fraction=f]
-                              [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate|validate] [--validate-k=3] [--two-start-always] [--voxel=auto]
+                              [--gate [--gate-min=0] [--gate-rot=10] [--gate-drot=8]] [--fallback=identity|cv|kiss] [--two-start=<deg>|none] [--two-start-margin=0.02] [--range=fallback|candidate|validate] [--validate-k=3] [--two-start-always] [--voxel=auto]
                               [--rotation-weight=100] [--save-failed]
                               [--normalise=gain|gain_clahe] [--panorama-width=2048|auto] [--panorama-up=4|auto] [--image-start=false]
                               [--stuck=none|<m>] [--sigma=adaptive|<m>] [--deskew=false]
@@ -140,7 +140,7 @@ def main():
             config.image_deskew.save_rejected_dir = str(out / "rejected_pairs")
         if "--save-failed" in sys.argv:                          # panoramas + matches of every scan whose intensity motion failed
             config.image_deskew.save_rejected_dir = str(out / "failed_matches")
-        if "fallback" in opts:                                   # identity | constant_velocity (#057)
+        if "fallback" in opts:                                   # identity | constant_velocity (#057) | kiss (#146: CV deskew + start on failed scans)
             config.image_deskew.fallback = {"cv": "constant_velocity"}.get(opts["fallback"], opts["fallback"])
         if "two-start" in opts:                                  # register twice when image and CV disagree (#057)
             v = opts["two-start"]                            # "none" / "off": single start (every result before #059)

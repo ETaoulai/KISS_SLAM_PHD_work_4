@@ -224,8 +224,9 @@ class ImageDeskewConfig(BaseModel):
     gate_max_rotation_change_deg: Optional[float] = None
     # What a scan without an image motion (failed or rejected) gets: "identity" = no deskew and ICP started from the
     # last pose (every result before #054); "constant_velocity" = no deskew, ICP started from KISS's constant-velocity
-    # guess last_pose @ last_delta.
-    fallback: Literal["identity", "constant_velocity"] = "identity"
+    # guess last_pose @ last_delta; "kiss" (#146) = deskew AND start from the constant velocity, exactly KISS, for the failed scans only
+    # (unlike two_start_kiss, the second of the two starts is unchanged - #119: changing it collapsed underground_hard).
+    fallback: Literal["identity", "constant_velocity", "kiss"] = "identity"
     # Two starting points (#057): when the image motion and KISS's constant-velocity guess differ by more than this
     # (deg of rotation), register the scan twice — (A) deskewed with the image motion and started from it, (B) not
     # deskewed and started from constant velocity — and keep the result that fits the local map better (truncated mean

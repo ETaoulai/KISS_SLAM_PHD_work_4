@@ -845,8 +845,9 @@ class KissSLAM:
         cv_deskew = self.image_cfg.deskew_from == "cv"   # #103: deskew with constant velocity (as KISS), the image only as the ICP start
         kiss_floor = self.image_cfg.two_start_kiss       # #108: the second start (and the fallback of a failed image motion) is KISS itself
         if M is None:                         # no image motion: no deskew (#012); ICP start per image_deskew.fallback
-            delta = odo.last_delta if (cv_deskew or kiss_floor) else np.eye(4)
-            start = odo.last_delta if (self.image_cfg.fallback == "constant_velocity" or cv_deskew or kiss_floor) else delta
+            kiss_fb = self.image_cfg.fallback == "kiss"                     # #146: the failed scan is registered exactly as KISS would
+            delta = odo.last_delta if (cv_deskew or kiss_floor or kiss_fb) else np.eye(4)
+            start = odo.last_delta if (self.image_cfg.fallback in ("constant_velocity", "kiss") or cv_deskew or kiss_floor) else delta
         else:
             delta = M if self.image_cfg.use_for_deskew else np.eye(4)      # False: ICP start only, no deskew (#082)
             if cv_deskew:
