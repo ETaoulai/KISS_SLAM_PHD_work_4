@@ -144,7 +144,14 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "always109": "KISS floor (#108) + every scan registered from all starts, best map fit (#109)",
         "autow111": "default of after_091, panorama columns of the sensor only (upscale 8 as before) (#111)",
         "rsmooth121": "default of after_091, intensity / smooth range curve of the scan (range_smooth, #118 / #121)",
-        "rsq121": "default of after_091, intensity x r^2 (range2, Ouster sensors only, #118 / #121)"}
+        "rsq121": "default of after_091, intensity x r^2 (range2, Ouster sensors only, #118 / #121)",
+        "blend131": "default of after_091, adaptive image / constant-velocity blend, deskew + ICP start (#131 / #133)",
+        "multit131": "default of after_091, translation from the k-2 joint fit, rotation two-scan (#131 / #133)",
+        "sec132": "default of after_091, sector weights (8) in the motion fit (#132 / #134)",
+        "fr132": "default of after_091, range-panorama matches fused into the motion fit (#132 / #135)",
+        "ds132": "default of after_091, drop pairs zero motion explains (#132 / #135)",
+        "sr135": "default of after_091, sector weights for the rotation only (#135 / #139)",
+        "bd137": "default of after_091, adaptive blend for the DESKEW only, ICP start = image (#137 / #138 / #140)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:
