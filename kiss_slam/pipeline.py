@@ -232,15 +232,26 @@ class SlamPipeline(OdometryPipeline):
         # ICP of scan idx, so the two overlap.  Reading stays in order (serial rosbag reader).
         prefetch = self.kiss_slam.image_motion_parallel
         pending = None
+        reader = None
+        if prefetch:                                       # #159: scans read (in order) by a background thread, a few ahead
+            import queue, threading
+            q = queue.Queue(maxsize=4)
+
+            def _read_all():
+                for i in range(self._first, self._last):
+                    q.put(self._next(i))
+            reader = threading.Thread(target=_read_all, daemon=True)
+            reader.start()
+            read_next = q.get
         for idx in trange(self._first, self._last, unit=" frames", dynamic_ncols=True):
             if prefetch:
                 if pending is None:
-                    pending = self._next(idx)
+                    pending = read_next()
                     self.kiss_slam.submit_image_motion(*pending)
                 frame, timestamps, intensity, ring = pending
                 pending = None
                 if idx + 1 < self._last:
-                    pending = self._next(idx + 1)
+                    pending = read_next()
                     self.kiss_slam.submit_image_motion(*pending)
             else:
                 frame, timestamps, intensity, ring = self._next(idx)

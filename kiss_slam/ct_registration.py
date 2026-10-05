@@ -48,7 +48,10 @@ def place(points, s, Tb, Te):
     """World positions of points at their times between Tb and Te."""
     # #156: slerp in closed form, R(s) = R_b exp(s log(R_b^T R_e)) (what scipy's Slerp computes), vectorised with Rodrigues - scipy Rotation
     # objects per call were ~20 % of the run time.  Rotating R_b^T-free: R(s) p = R_b (exp(s w) p).
-    w = Rotation.from_matrix(Tb[:3, :3].T @ Te[:3, :3]).as_rotvec()
+    w = _rotvec(Tb[:3, :3].T @ Te[:3, :3])
+    if USE_CPP:                                                        # #159
+        return _CT.place(np.ascontiguousarray(points, dtype=np.float64), np.ascontiguousarray(s, dtype=np.float64),
+                         np.ascontiguousarray(Tb[:3, :3]), w, Tb[:3, 3].copy(), Te[:3, 3].copy())
     s = np.clip(s, 0.0, 1.0)
     rp = _rodrigues_apply(s[:, None] * w, points) @ Tb[:3, :3].T
     t = (1.0 - s)[:, None] * Tb[:3, 3] + s[:, None] * Te[:3, 3]
@@ -68,10 +71,31 @@ def _rodrigues_apply(rv, p):
     return np.where(small[:, None], p + np.cross(rv, p), out)
 
 
+def _rotvec(Rm):
+    """Rotation vector of a rotation matrix (#159: scipy's Rotation objects were ~7 % of the run time); antipodal-safe like scipy."""
+    c = np.clip((np.trace(Rm) - 1.0) / 2.0, -1.0, 1.0)
+    th = np.arccos(c)
+    v = np.array([Rm[2, 1] - Rm[1, 2], Rm[0, 2] - Rm[2, 0], Rm[1, 0] - Rm[0, 1]])
+    if th < 1e-6:
+        return 0.5 * v
+    if np.pi - th < 1e-4:                                              # near pi: fall back to scipy (rare)
+        return Rotation.from_matrix(Rm).as_rotvec()
+    return v * (th / (2.0 * np.sin(th)))
+
+
+def _expm(rv):
+    """Rotation matrix of a rotation vector (Rodrigues; series below 1e-8 rad)."""
+    th = float(np.linalg.norm(rv))
+    K = np.array([[0.0, -rv[2], rv[1]], [rv[2], 0.0, -rv[0]], [-rv[1], rv[0], 0.0]])
+    if th < 1e-8:
+        return np.eye(3) + K
+    return np.eye(3) + (np.sin(th) / th) * K + ((1.0 - np.cos(th)) / th ** 2) * (K @ K)
+
+
 def _left(T, d):
     """Exp(d) . T for d = (dtheta, dt): rotation applied on the left, translation added (world-frame perturbation)."""
     out = T.copy()
-    out[:3, :3] = Rotation.from_rotvec(d[:3]).as_matrix() @ T[:3, :3]
+    out[:3, :3] = _expm(d[:3]) @ T[:3, :3]                             # #159: Rodrigues instead of a scipy Rotation object
     out[:3, 3] = T[:3, 3] + d[3:]
     return out
 
@@ -95,29 +119,23 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
     if USE_CPP:                                                        # #158: grid with cell = bound -> the same nearest neighbour as the tree
         grid = _CT.Grid(np.ascontiguousarray(map_points, dtype=np.float64), float(0.5 * voxel if voxel else bound))   # #158b: small cells
         src_c = np.ascontiguousarray(source, dtype=np.float64); s_c = np.ascontiguousarray(s_src, dtype=np.float64)
+        img_c = None
+        if img is not None and len(img[0]) >= 3:
+            img_c = tuple(np.ascontiguousarray(a, dtype=np.float64) for a in img)    # (targets, points, times)
     else:
         tree = tree if tree is not None else cKDTree(map_points)
     w_prev, v_prev = prev_motion
     for _ in range(max_iter):
         if USE_CPP:
-            w_be = Rotation.from_matrix(Tb[:3, :3].T @ Te[:3, :3]).as_rotvec()
+            w_be = _rotvec(Tb[:3, :3].T @ Te[:3, :3])
             H, g, n = _CT.accumulate(grid, src_c, s_c, np.ascontiguousarray(Tb[:3, :3]), w_be, Tb[:3, 3].copy(), Te[:3, 3].copy(),
                                      float(sigma), float(bound))
             if n < 10:
                 break
             H, g = np.array(H), np.array(g)
-            if img is not None and len(img[0]) >= 3:                    # image matches as residuals (joint) - few, stays in Python
-                pw, q_img, s_img = img
-                xq = place(q_img, s_img, Tb, Te)
-                ri = xq - pw
-                ki = img_kernel if img_kernel is not None else sigma
-                wi = img_weight * ki ** 2 / (ki + (ri ** 2).sum(1)) ** 2
-                Rq = xq - ((1.0 - s_img)[:, None] * Tb[:3, 3] + s_img[:, None] * Te[:3, 3])
-                Ji = np.zeros((len(ri), 3, 12)); Jri = -_skew(Rq)
-                Ji[:, :, 0:3] = (1.0 - s_img)[:, None, None] * Jri; Ji[:, :, 3:6] = (1.0 - s_img)[:, None, None] * np.eye(3)
-                Ji[:, :, 6:9] = s_img[:, None, None] * Jri; Ji[:, :, 9:12] = s_img[:, None, None] * np.eye(3)
-                Jwi = Ji * wi[:, None, None]
-                H += np.einsum("nki,nkj->ij", Jwi, Ji); g += np.einsum("nki,nk->i", Jwi, ri)
+            if img_c is not None:                                       # image matches as residuals (joint), C++ (#159)
+                _CT.accumulate_targets(H, g, img_c[1], img_c[2], img_c[0], np.ascontiguousarray(Tb[:3, :3]), w_be, Tb[:3, 3].copy(),
+                                       Te[:3, 3].copy(), float(img_kernel if img_kernel is not None else sigma), float(img_weight))
             Tb, Te, done = _constrained_step(H, g, n, Tb, Te, T_prev_end, w_prev, v_prev, lam_loc, lam_vel, tol)
             if done:
                 break
@@ -177,13 +195,13 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
 def _constrained_step(H, g, n, Tb, Te, T_prev_end, w_prev, v_prev, lam_loc, lam_vel, tol):
     """ECTLO's location / velocity constraints added to (H, g), one Gauss-Newton update - the same algebra as the Python loop (#158)."""
     lam_l, lam_v = lam_loc * n, lam_vel * n
-    r_loc = np.concatenate([Rotation.from_matrix(Tb[:3, :3] @ T_prev_end[:3, :3].T).as_rotvec(), Tb[:3, 3] - T_prev_end[:3, 3]])
+    r_loc = np.concatenate([_rotvec(Tb[:3, :3] @ T_prev_end[:3, :3].T), Tb[:3, 3] - T_prev_end[:3, 3]])
     H[0:6, 0:6] += lam_l * np.eye(6)
     g[0:6] += lam_l * r_loc
-    wm, vm = motion(Tb, Te)
+    Rb_T = Tb[:3, :3].T
+    wm, vm = _rotvec(Rb_T @ Te[:3, :3]), Rb_T @ (Te[:3, 3] - Tb[:3, 3])          # = motion(Tb, Te)
     r_vel = np.concatenate([wm - w_prev, vm - v_prev])
     Jv = np.zeros((6, 12))
-    Rb_T = Tb[:3, :3].T
     Jv[0:3, 0:3], Jv[0:3, 6:9] = -Rb_T, Rb_T
     Jv[3:6, 3:6], Jv[3:6, 9:12] = -Rb_T, Rb_T
     H += lam_v * Jv.T @ Jv

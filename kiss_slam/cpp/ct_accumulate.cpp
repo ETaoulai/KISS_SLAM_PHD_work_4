@@ -129,9 +129,63 @@ py::tuple accumulate(const Grid &grid, darray points, darray s_arr, darray Rb_ar
     return py::make_tuple(H_out, g_out, used);
 }
 
+// #159: world positions of points at their times (R(s) p + t(s)), the whole scan at once - the Python place() / deskew_to_end().
+py::array_t<double> place(darray points, darray s_arr, darray Rb_arr, darray w_arr, darray tb_arr, darray te_arr) {
+    const ssize_t n = points.shape(0);
+    const double *P = points.data(), *S = s_arr.data(), *Rb = Rb_arr.data(), *w = w_arr.data(), *tb = tb_arr.data(), *te = te_arr.data();
+    py::array_t<double> out({n, static_cast<ssize_t>(3)});
+    double *X = out.mutable_data();
+    for (ssize_t i = 0; i < n; ++i) {
+        const double s = std::min(std::max(S[i], 0.0), 1.0);
+        const double rv[3] = {s * w[0], s * w[1], s * w[2]};
+        double e[3];
+        rodrigues_apply(rv, &P[3 * i], e);
+        for (int a = 0; a < 3; ++a)
+            X[3 * i + a] = Rb[3 * a] * e[0] + Rb[3 * a + 1] * e[1] + Rb[3 * a + 2] * e[2] + (1.0 - s) * tb[a] + s * te[a];
+    }
+    return out;
+}
+
+// #159: the image-match residuals (fixed targets, the previous scan's matched points) added to (H, g) - the Python joint branch.
+void accumulate_targets(py::array_t<double, py::array::c_style> H_arr, py::array_t<double, py::array::c_style> g_arr, darray points,
+                        darray s_arr, darray targets, darray Rb_arr, darray w_arr, darray tb_arr, darray te_arr, double kernel,
+                        double weight) {
+    const ssize_t n = points.shape(0);
+    const double *P = points.data(), *S = s_arr.data(), *Q = targets.data(), *Rb = Rb_arr.data(), *w = w_arr.data(), *tb = tb_arr.data(),
+                 *te = te_arr.data();
+    double *H = H_arr.mutable_data(), *g = g_arr.mutable_data();
+    const double k2 = kernel * kernel;
+    for (ssize_t i = 0; i < n; ++i) {
+        const double s = std::min(std::max(S[i], 0.0), 1.0);
+        const double rv[3] = {s * w[0], s * w[1], s * w[2]};
+        double e[3];
+        rodrigues_apply(rv, &P[3 * i], e);
+        const double Rp[3] = {Rb[0] * e[0] + Rb[1] * e[1] + Rb[2] * e[2], Rb[3] * e[0] + Rb[4] * e[1] + Rb[5] * e[2],
+                              Rb[6] * e[0] + Rb[7] * e[1] + Rb[8] * e[2]};
+        const double r[3] = {Rp[0] + (1.0 - s) * tb[0] + s * te[0] - Q[3 * i], Rp[1] + (1.0 - s) * tb[1] + s * te[1] - Q[3 * i + 1],
+                             Rp[2] + (1.0 - s) * tb[2] + s * te[2] - Q[3 * i + 2]};
+        const double den = kernel + r[0] * r[0] + r[1] * r[1] + r[2] * r[2];
+        const double wt = weight * k2 / (den * den);
+        double J[3][12] = {};
+        const double Jr[3][3] = {{0.0, Rp[2], -Rp[1]}, {-Rp[2], 0.0, Rp[0]}, {Rp[1], -Rp[0], 0.0}};
+        for (int a = 0; a < 3; ++a) {
+            for (int b = 0; b < 3; ++b) { J[a][b] = (1.0 - s) * Jr[a][b]; J[a][6 + b] = s * Jr[a][b]; }
+            J[a][3 + a] = 1.0 - s;
+            J[a][9 + a] = s;
+        }
+        for (int u = 0; u < 12; ++u) {
+            const double ju0 = J[0][u], ju1 = J[1][u], ju2 = J[2][u];
+            g[u] += wt * (ju0 * r[0] + ju1 * r[1] + ju2 * r[2]);
+            for (int v = 0; v < 12; ++v) H[12 * u + v] += wt * (ju0 * J[0][v] + ju1 * J[1][v] + ju2 * J[2][v]);
+        }
+    }
+}
+
 PYBIND11_MODULE(_ct_accumulate, m) {
     m.doc() = "B.9 continuous-time registration inner loop (#158)";
     py::class_<Grid>(m, "Grid").def(py::init<darray, double>(), py::arg("points"), py::arg("cell"));
     m.def("accumulate", &accumulate, py::arg("grid"), py::arg("points"), py::arg("s"), py::arg("Rb"), py::arg("w"), py::arg("tb"),
           py::arg("te"), py::arg("sigma"), py::arg("bound"));
+    m.def("place", &place);
+    m.def("accumulate_targets", &accumulate_targets);
 }
