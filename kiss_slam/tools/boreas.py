@@ -34,4 +34,4 @@ class Boreas:
         p = p[np.linalg.norm(p[:, :3], axis=1) > 0.0]
         t = self.file_times[idx] + p[:, 5]
         self.stamps[idx] = t.min()                         # the scan stamp = its first point (as the Ouster readers)
-        return p[:, :3], t, p[:, 3], p[:, 4].astype(np.int64)
+        return np.ascontiguousarray(p[:, :3]), t, p[:, 3], p[:, 4].astype(np.int64)   # contiguous: pybind copies a strided slice point by point (#170: 165 s of 600)
