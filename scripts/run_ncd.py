@@ -121,6 +121,8 @@ def main():
             config.image_deskew.multi_baseline = "translation"
         if "--fuse-range" in sys.argv:                           # #090: range-panorama matches in the same motion fit
             config.image_deskew.fuse_range = True
+        if opts.get("fuse-range") == "weak":                     # #152: only on scans with a low intensity match count
+            config.image_deskew.fuse_range = "weak"
         if "--drop-stationary" in sys.argv:                      # #132: drop pairs zero motion explains as well, refit
             config.image_deskew.drop_stationary = True
         if "sectors" in opts:                                    # #093: equal weight per azimuth sector in the time fit

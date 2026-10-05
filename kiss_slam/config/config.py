@@ -200,7 +200,7 @@ class ImageDeskewConfig(BaseModel):
     # "translation" (#131): only the translation from the joint fit, the rotation stays the two-scan one (the deskew needs the rotation per scan).
     multi_baseline: Union[bool, Literal["translation"]] = False
     # #090: also the range-panorama matches of k-1 <-> k in the same fit (computed on every scan).  False = every result before.
-    fuse_range: bool = False
+    fuse_range: Union[bool, Literal["weak"]] = False                    # #152: "weak" = only where the intensity match count is low
     # #132: drop the pairs that zero motion explains at least as well as the fitted motion, refit.  False = every result before.
     drop_stationary: bool = False
     # Deskew source (#103): "image" = the image motion (every result before); "cv" = KISS's constant velocity (last_delta), the image motion

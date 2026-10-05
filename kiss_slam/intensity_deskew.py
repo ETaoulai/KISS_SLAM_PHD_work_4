@@ -946,6 +946,7 @@ class ScanMotionEstimator:
         # fuse_range: also the range-panorama matches of k-1 <-> k (computed on every scan, cached for the next).
         self.multi_baseline, self.fuse_range = multi_baseline, fuse_range
         self.prev2 = None; self.prev_range_feat = None
+        self._inl_hist = []                                   # #152
         self.n_joint = 0; self.joint_pairs = []
         self.ratios = []; self.last_factor = 1.0
         self.gate = (gate_min_matches, gate_max_rotation_deg, gate_max_rotation_change_deg)
@@ -1008,6 +1009,12 @@ class ScanMotionEstimator:
             self.last_factor = f
         self.last_params = match_motion.last_params if M1 is not None else None
         self.last_t_start = cur[5]
+        self._fuse_now = True
+        if self.fuse_range == "weak" and M1 is not None:                         # #152: fuse only when the intensity match count is low
+            hist = self._inl_hist                                                 # for THIS sequence: < half the median of the last 100
+            self._fuse_now = len(hist) >= 20 and n < 0.5 * float(np.median(hist[-100:]))
+            hist.append(n)
+            self.n_fuse_weak = getattr(self, "n_fuse_weak", 0) + int(self._fuse_now)
         if M1 is not None and (self.multi_baseline or self.fuse_range):          # #090
             M1, n = self._joint(M1, n, prev, cur, xyz, ts, ring)
         self.prev2 = prev
@@ -1038,7 +1045,7 @@ class ScanMotionEstimator:
                     self.range_detector = make_detector("surf", 10.0); self.range_rng = np.random.default_rng(1000)
                 cur_r = range_features(xyz, ts, ring, self.range_detector)
                 prev_r, self.prev_range_feat = self.prev_range_feat, cur_r
-                if prev_r is not None:
+                if prev_r is not None and getattr(self, "_fuse_now", True):   # #152: "weak" = only on low-match scans (features cached every scan)
                     GUIDED_PREDICTION, GUIDED_PRED_MOTION = "motion", M1
                     _, Mr, _ = match_motion(prev_r, cur_r, self.period, self.range_rng, self.bf, self.model, self.subpixel,
                                             self.stuck_min, self.floor_only, self.elev, self.range_)
