@@ -171,6 +171,8 @@ def main():
             config.image_deskew.guided_prediction = opts["guided-predict"]
         if "ct" in opts:                                         # #115 (B.9): deskew inside the registration, init image | cv
             config.image_deskew.ct_registration = opts["ct"]
+        if "ct-max-iter" in opts:
+            config.image_deskew.ct_max_iter = int(opts["ct-max-iter"])
         if "ct-image-weight" in opts:
             config.image_deskew.ct_image_weight = float(opts["ct-image-weight"])
         if "ct-lambda" in opts:
