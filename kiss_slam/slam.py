@@ -43,6 +43,11 @@ from kiss_slam.voxel_map import VoxelMap
 _WORKER_ESTIMATOR = None
 
 
+
+# #168: thread budget - KISS_THREADS=N limits the KD-tree queries (and, via intensity_deskew, OpenCV) to N threads; unset = all cores.
+import os as _os
+_KD_WORKERS = int(_os.environ.get("KISS_THREADS", "0")) or -1
+
 def _motion_worker_init(estimator_kwargs, module_knobs):
     """Runs once in the worker: the module-level knobs of the parent, then the estimator."""
     global _WORKER_ESTIMATOR
@@ -85,7 +90,7 @@ def _interpolate_intensity(raw_frame: np.ndarray,
     if raw_intensity is None or len(raw_intensity) == 0:
         return None
     tree = KDTree(raw_frame)
-    _, idx = tree.query(downsampled, k=1, workers=-1)
+    _, idx = tree.query(downsampled, k=1, workers=_KD_WORKERS)
     return raw_intensity[idx].astype(np.float32)
 
 
@@ -120,7 +125,7 @@ def _align_intensity_to_preprocessed(deskewed_all: np.ndarray,
     keep = (rng < max_range) & (rng > min_range)
     if int(keep.sum()) == len(preprocessed):
         return raw_intensity[keep], False
-    _, idx = KDTree(deskewed_all).query(preprocessed, k=1, workers=-1)
+    _, idx = KDTree(deskewed_all).query(preprocessed, k=1, workers=_KD_WORKERS)
     return raw_intensity[idx], True
 
 
@@ -247,7 +252,7 @@ def _compute_icp_metrics(source_points, map_tree, pose, max_dist):
     if map_tree is None or len(source_points) == 0:
         return empty
     src_in_map = transform_points(source_points, pose)
-    dists, _ = map_tree.query(src_in_map, k=1, workers=-1)
+    dists, _ = map_tree.query(src_in_map, k=1, workers=_KD_WORKERS)
     inlier_mask = dists < max_dist
     inlier_count = int(inlier_mask.sum())
     n_source = len(source_points)
@@ -916,7 +921,7 @@ class KissSLAM:
                 map_pts = odo.local_map.point_cloud()
                 if len(map_pts):
                     tree = KDTree(map_pts)
-                    fit = lambda src, pose: float(np.minimum(tree.query(src @ pose[:3, :3].T + pose[:3, 3], workers=-1)[0],
+                    fit = lambda src, pose: float(np.minimum(tree.query(src @ pose[:3, :3].T + pose[:3, 3], workers=_KD_WORKERS)[0],
                                                              3 * sigma).mean())
                     fits = {name: fit(r[1], r[4]) for name, r in results.items()}
                     best = min(fits, key=fits.get)
