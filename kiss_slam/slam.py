@@ -924,6 +924,8 @@ class KissSLAM:
                         best = "image"                      # not better by the margin: keep the image start
                     deskewed, source, frame_downsample, initial_guess, new_pose = results[best]
                     kept_delta = delta if best == "image" else cands[best][0]
+                    if best == "cv" and self.image_cfg.two_start_cv_deskew and self.pose_time_fractions:
+                        deskewed, frame_downsample = self._deskew_with_icp_motion(frame, timestamps, new_pose)   # #163
                     self.n_two_start += 1
                     self.n_two_start_cv_won += best == "cv"
                     from scipy.spatial.transform import Rotation as _R
@@ -949,6 +951,36 @@ class KissSLAM:
         odo.last_pose = new_pose
         self._kept_deskew_delta = kept_delta
         return deskewed, source
+
+    def _deskew_with_icp_motion(self, frame, timestamps, new_pose):
+        """#163: the scan registered without deskew (constant-velocity start won), deskewed with the ICP's own motion for the map.
+
+        The ICP step P_{k-1}^-1 P_k spans from the previous pose's time (fraction f_prev of its sweep) to this pose's (f, the mean point
+        time of an undeskewed scan): (1 - f_prev) + f sweeps, contiguous sweeps assumed.  Per-sweep generator L = log(step) / that span;
+        each point at its time s is moved by exp((s - f) L), i.e. expressed at the pose's own instant - the pose stays as registered."""
+        from scipy.linalg import expm, logm
+
+        odo = self.odometry
+        t = np.asarray(timestamps, dtype=np.float64).ravel()
+        pts = np.asarray(frame, dtype=np.float64)
+        if len(t) != len(pts) or t.max() <= t.min():
+            deskewed = pts
+        else:
+            s = (t - t.min()) / (t.max() - t.min())
+            f = self._pose_time_fraction(frame, t, None)
+            span = (1.0 - self.pose_time_fractions[-1]) + f
+            step = np.linalg.inv(odo.last_pose) @ new_pose
+            L = np.real(logm(step)) / max(span, 1e-3)
+            bins = np.minimum((s * 100).astype(int), 99)
+            deskewed = np.empty_like(pts)
+            for b in np.unique(bins):
+                m = bins == b
+                T = expm(((b + 0.5) / 100.0 - f) * L)
+                deskewed[m] = pts[m] @ T[:3, :3].T + T[:3, 3]
+        deskewed = odo.preprocessor.preprocess(deskewed, timestamps, np.eye(4))   # the same range crop as the registered scans
+        _, frame_downsample = odo.voxelize(deskewed)
+        self.n_two_start_cv_deskewed = getattr(self, "n_two_start_cv_deskewed", 0) + 1
+        return deskewed, frame_downsample
 
     def _record_pose_time(self, frame, timestamps, deskew_delta):
         t = np.asarray(timestamps, dtype=np.float64).ravel()

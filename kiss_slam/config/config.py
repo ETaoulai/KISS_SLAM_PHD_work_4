@@ -230,6 +230,10 @@ class ImageDeskewConfig(BaseModel):
     # #150 (option C): with fallback "kiss", use it only from the N-th CONSECUTIVE scan without an image motion (a long gap, e.g. the image is
     # blind at altitude, #143); isolated failures keep "identity" (fast spinning: constant velocity is the wrong guess there, #149).  1 = always (#146).
     fallback_kiss_after: int = 1
+    # #163: when the constant-velocity start wins the two starts (registered WITHOUT deskew), the scan that goes into the map is deskewed
+    # with the motion the ICP just found (no second registration, the pose unchanged; points expressed at the pose's own time in the
+    # sweep).  False = every result before (the map gets the undeskewed scan).
+    two_start_cv_deskew: bool = False
     # Two starting points (#057): when the image motion and KISS's constant-velocity guess differ by more than this
     # (deg of rotation), register the scan twice — (A) deskewed with the image motion and started from it, (B) not
     # deskewed and started from constant velocity — and keep the result that fits the local map better (truncated mean

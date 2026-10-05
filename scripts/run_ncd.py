@@ -144,6 +144,8 @@ def main():
             config.image_deskew.save_rejected_dir = str(out / "failed_matches")
         if "fallback" in opts:                                   # identity | constant_velocity (#057) | kiss (#146: CV deskew + start on failed scans)
             config.image_deskew.fallback = {"cv": "constant_velocity"}.get(opts["fallback"], opts["fallback"])
+        if "--cv-winner-deskew" in sys.argv:                     # #163: deskew the map scan of a constant-velocity winner with the ICP motion
+            config.image_deskew.two_start_cv_deskew = True
         if "fallback-after" in opts:                             # #150: fallback kiss only from the N-th consecutive failure
             config.image_deskew.fallback_kiss_after = int(opts["fallback-after"])
         if "two-start" in opts:                                  # register twice when image and CV disagree (#057)
