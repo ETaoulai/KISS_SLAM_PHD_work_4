@@ -213,7 +213,7 @@ MulRan (όχημα, λήψη από τον Μ.Τ.).
 
 ## Συνέχεια σε νέα συνεδρία — τι τρέχει και πώς βαθμολογείται (5/10)
 
-**Σε εξέλιξη:** #164 — επιλογή Γ (`bfc150`) σε όλες τις 42 + Boreas × 4· systemd μονάδα `kiss-bfc164`, launcher `kiss_runs/bfc164_launch.sh`, log `kiss_runs/bfc164_launch.log`,
+**Ολοκληρώθηκε 5/10 (βλ. log #164):** #164 — επιλογή Γ (`bfc150`) σε όλες τις 42 + Boreas × 4· systemd μονάδα `kiss-bfc164`, launcher `kiss_runs/bfc164_launch.sh`, log `kiss_runs/bfc164_launch.log`,
 **τέλος = αρχείο `kiss_runs/bfc164_FINISHED`** (έλεγχος: `systemctl --user is-active kiss-bfc164`, `grep -c "exit 0)" ~/kiss_runs/bfc164_launch.log` → 144 νέα + 28 skip).
 **Βαθμολόγηση όταν τελειώσει:**
 1. 27 ακολουθίες: `python scripts/results_table.py --all-arms --runs=/home/photogrammetry/kiss_runs_ssd --out=/home/photogrammetry/kiss_runs/results_official_allarms_164` (ο `bfc150` έχει ετικέτα).
