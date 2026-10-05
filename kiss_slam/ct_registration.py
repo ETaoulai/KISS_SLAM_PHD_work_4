@@ -93,7 +93,7 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
         return Tb, Te
     bound = 3.0 * sigma if voxel is None else min(3.0 * sigma, 2.0 * np.sqrt(3.0) * voxel)
     if USE_CPP:                                                        # #158: grid with cell = bound -> the same nearest neighbour as the tree
-        grid = _CT.Grid(np.ascontiguousarray(map_points, dtype=np.float64), float(bound))
+        grid = _CT.Grid(np.ascontiguousarray(map_points, dtype=np.float64), float(0.5 * voxel if voxel else bound))   # #158b: small cells
         src_c = np.ascontiguousarray(source, dtype=np.float64); s_c = np.ascontiguousarray(s_src, dtype=np.float64)
     else:
         tree = tree if tree is not None else cKDTree(map_points)

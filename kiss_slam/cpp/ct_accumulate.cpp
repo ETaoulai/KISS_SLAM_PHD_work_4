@@ -1,7 +1,8 @@
 // B.9 continuous-time registration (#158): the per-iteration inner loop of kiss_slam/ct_registration.ct_register in C++.
 // For every source point at its time s in [0, 1]: place it between the start and end pose of the sweep (R(s) = R_b exp(s w),
 // t(s) = (1 - s) t_b + s t_e), find the nearest map point within `bound` (a hash grid whose cell IS the bound, so the 3 x 3 x 3 cells
-// around the point contain every map point closer than the bound - the same neighbour as the KD-tree query of the Python version),
+// around the point contain every map point closer than the bound - the same neighbour as the KD-tree query of the Python version;
+// #158b: small cells searched in shells outward with an exact stop),
 // and add the Geman-McClure-weighted point-to-point residual to the 12 x 12 Gauss-Newton system (first-order interpolation Jacobians,
 // left perturbations of both poses, as in the Python version).  Single-threaded: deterministic summation order.
 //
@@ -9,6 +10,7 @@
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -39,24 +41,31 @@ struct Grid {
             cells[c].push_back(static_cast<int32_t>(i));
         }
     }
-    // Nearest map point strictly closer than `bound` (<= cell); -1 if none.
+    // Nearest map point strictly closer than `bound`; -1 if none.  Shells of cells around the point's cell, outward (#158b): a shell r
+    // (Chebyshev distance r in cells) is at least (r - 1) * cell away, so the search stops once that exceeds the best distance - exact.
     int32_t nearest(const double *x, double bound, double &d2best) const {
         const int64_t ci = static_cast<int64_t>(std::floor(x[0] / cell)), cj = static_cast<int64_t>(std::floor(x[1] / cell)),
                       ck = static_cast<int64_t>(std::floor(x[2] / cell));
+        const int64_t kmax = static_cast<int64_t>(std::ceil(bound / cell));
         int32_t best = -1;
         d2best = bound * bound;
-        for (int64_t a = -1; a <= 1; ++a)
-            for (int64_t b = -1; b <= 1; ++b)
-                for (int64_t c = -1; c <= 1; ++c) {
-                    auto it = cells.find(key(ci + a, cj + b, ck + c));
-                    if (it == cells.end()) continue;
-                    for (int32_t idx : it->second) {
-                        const double *q = &pts[3 * static_cast<size_t>(idx)];
-                        const double dx = x[0] - q[0], dy = x[1] - q[1], dz = x[2] - q[2];
-                        const double d2 = dx * dx + dy * dy + dz * dz;
-                        if (d2 < d2best) { d2best = d2; best = idx; }
+        for (int64_t r = 0; r <= kmax; ++r) {
+            const double shell_min = (r - 1) * cell;
+            if (r > 0 && shell_min > 0.0 && shell_min * shell_min >= d2best) break;
+            for (int64_t a = -r; a <= r; ++a)
+                for (int64_t b = -r; b <= r; ++b)
+                    for (int64_t c = -r; c <= r; ++c) {
+                        if (std::max({std::llabs(a), std::llabs(b), std::llabs(c)}) != r) continue;   // only the shell
+                        auto it = cells.find(key(ci + a, cj + b, ck + c));
+                        if (it == cells.end()) continue;
+                        for (int32_t idx : it->second) {
+                            const double *q = &pts[3 * static_cast<size_t>(idx)];
+                            const double dx = x[0] - q[0], dy = x[1] - q[1], dz = x[2] - q[2];
+                            const double d2 = dx * dx + dy * dy + dz * dz;
+                            if (d2 < d2best) { d2best = d2; best = idx; }
+                        }
                     }
-                }
+        }
         return best;
     }
 };
