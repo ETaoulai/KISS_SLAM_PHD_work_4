@@ -114,7 +114,7 @@ def main():
             config.image_deskew.cv_blend = opts["cv-blend"]
             config.image_deskew.cv_blend_window = int(opts.get("cv-blend-window", 20))
             config.image_deskew.cv_blend_part = opts.get("cv-blend-part", "full")     # #137: full | rotation
-            config.image_deskew.cv_blend_use = opts.get("cv-blend-use", "both")       # #137: both | deskew
+            config.image_deskew.cv_blend_use = opts.get("cv-blend-use", config.image_deskew.cv_blend_use)   # #137: both | deskew (default: the config, deskew on ral_method)
         if "--multi-baseline" in sys.argv:                       # #130: the motion fit with the matches of k-2 <-> k too
             config.image_deskew.multi_baseline = True
         if opts.get("multi-baseline") == "translation":          # #131: only its translation, the rotation of the two-scan fit
@@ -166,7 +166,7 @@ def main():
         if "rotation-weight" in opts:                            # rotation information of the node graph (#067)
             config.pose_graph_optimizer.rotation_weight = float(opts["rotation-weight"])
         if "range" in opts:                                      # range-image motion: fallback | candidate (#058)
-            config.image_deskew.range_motion = opts["range"]
+            config.image_deskew.range_motion = None if opts["range"].lower() in ("none", "off") else opts["range"]   # ral_method: "none" turns it off
         if "stuck" in opts:                                      # near-floor stuck-match filter: none = off (ablation)
             v = opts["stuck"]
             config.image_deskew.stuck_min = None if v.lower() in ("none", "off") else float(v)

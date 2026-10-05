@@ -138,7 +138,7 @@ class ImageDeskewConfig(BaseModel):
     # SURF needs OpenCV built with contrib + OPENCV_ENABLE_NONFREE=ON (not in the pip wheels).
     # surf_hessian_threshold: higher = fewer, stronger keypoints (OpenCV default 100).
     # surf_upright: no keypoint orientation (U-SURF); the panorama is never rotated in-plane.
-    detector: Literal["sift", "surf", "orb"] = "sift"   # "orb" since #088
+    detector: Literal["sift", "surf", "orb"] = "surf"   # "orb" since #088 · RA-L method (5/10): SURF
     # Multiplies the raw intensity before the panorama, which clips at 255 (built for the Hesai
     # 0-255 scale).  1.0 = Hesai.  Ouster (0 to ~1100, median 150-450): 255/1024 = 0.249 (#041).
     intensity_scale: float = 1.0
@@ -190,12 +190,12 @@ class ImageDeskewConfig(BaseModel):
     # Adaptive blend of the image motion and the constant velocity (#131, no threshold): weight of the image = v_cv / (v_img + v_cv), v the
     # mean squared rotation error of each prediction against the ICP result over the last cv_blend_window scans (causal); rotation by
     # slerp, translation linear, for BOTH uses of the image motion.  "off" = the image motion as measured (every result before #131).
-    cv_blend: Literal["off", "adaptive"] = "off"
+    cv_blend: Literal["off", "adaptive"] = "adaptive"   # RA-L method (5/10, #164): on
     cv_blend_window: int = 20
     # #137 (diagnosis of the drone loss, #133 / #134): cv_blend_part "rotation" = blend the rotation only, keep the image translation;
     # cv_blend_use "deskew" = the blend only for the deskew, the ICP start stays the image motion as measured.  Defaults = #131.
     cv_blend_part: Literal["full", "rotation"] = "full"
-    cv_blend_use: Literal["both", "deskew"] = "both"
+    cv_blend_use: Literal["both", "deskew"] = "deskew"   # RA-L method: the blend for the deskew only (#137)
     # Longer baseline (#090 / #130): the motion fit also uses the matches of scan k-2 <-> k on the same curve.  False = every result before.
     # "translation" (#131): only the translation from the joint fit, the rotation stays the two-scan one (the deskew needs the rotation per scan).
     multi_baseline: Union[bool, Literal["translation"]] = False
@@ -226,10 +226,10 @@ class ImageDeskewConfig(BaseModel):
     # last pose (every result before #054); "constant_velocity" = no deskew, ICP started from KISS's constant-velocity
     # guess last_pose @ last_delta; "kiss" (#146) = deskew AND start from the constant velocity, exactly KISS, for the failed scans only
     # (unlike two_start_kiss, the second of the two starts is unchanged - #119: changing it collapsed underground_hard).
-    fallback: Literal["identity", "constant_velocity", "kiss"] = "identity"
+    fallback: Literal["identity", "constant_velocity", "kiss"] = "kiss"   # RA-L method (#150 / #164)
     # #150 (option C): with fallback "kiss", use it only from the N-th CONSECUTIVE scan without an image motion (a long gap, e.g. the image is
     # blind at altitude, #143); isolated failures keep "identity" (fast spinning: constant velocity is the wrong guess there, #149).  1 = always (#146).
-    fallback_kiss_after: int = 1
+    fallback_kiss_after: int = 4   # RA-L method: from the 4th consecutive failure (#150)
     # #163: when the constant-velocity start wins the two starts (registered WITHOUT deskew), the scan that goes into the map is deskewed
     # with the motion the ICP just found (no second registration, the pose unchanged; points expressed at the pose's own time in the
     # sweep).  False = every result before (the map gets the undeskewed scan).
@@ -245,7 +245,7 @@ class ImageDeskewConfig(BaseModel):
     two_start_margin: float = 0.0
     # Motion from the RANGE panorama too (#058; log range + CLAHE, SURF at range_hessian): "fallback" = used when the
     # intensity motion fails or is rejected; "candidate" = an extra starting point for the two-start registration.
-    range_motion: Optional[Literal["fallback", "candidate", "validate"]] = None
+    range_motion: Optional[Literal["fallback", "candidate", "validate"]] = "fallback"   # RA-L method (#069 / #078)
     # Intensity of the panorama (#075): "none" = intensity x intensity_scale (every result before #075); "gain" = per scan,
     # scaled so its 99th percentile is 255 (no per-sensor scale; Hilti failures 447 -> 60 on UZH); "gain_clahe" = gain +
     # local contrast equalisation.  Panorama columns: None = 1024 (every result before #075); 2048 = the Hilti Ouster's own.
