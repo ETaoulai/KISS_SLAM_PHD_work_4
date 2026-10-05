@@ -69,10 +69,12 @@ moving sensor. *Effect* (row 8, #164): identical to row 7 on 30 of 43 sequences;
 
 ## Runtime
 
-Measured alone on one machine (48 cores; #161, #165, #166) **with unrestricted thread pools**: a serial run uses about 10–13 cores (OpenBLAS / numpy,
-OpenCV — capped at 8 —, the KD-tree of the two-start check; KISS's ICP 4 threads) and 1–3 GB of memory. quad_easy (Ouster 128): 10.3 Hz with
-`--parallel`, 8–9 Hz serial; the blend and the fallback add no measurable cost (240.5 vs 244.5 s serial, #165). Hesai and car: #166. For the paper
-the runtime must be stated at a fixed thread budget (`KISS_THREADS=4` + OMP / OPENBLAS / MKL_NUM_THREADS=4, #168, in progress).
+Measured alone on one machine (48 cores; #165, #166) **with unrestricted thread pools**: a run uses about 10–13 cores (OpenBLAS / numpy,
+OpenCV — capped at 8 —, the KD-tree of the two-start check; KISS's ICP 4 threads) and 1.1–1.2 GB of memory on the handheld sequences, 2.4–2.7 GB on the car.
+The blend and the fallback add no measurable cost (christ-church-03 274 vs 287 s serial, 241 vs 241 s parallel; Boreas 764 vs 774 s serial, #166).
+Handheld, 10 Hz sensors: christ-church-03 (Hesai) 11.4 Hz serial, 12.9 Hz with `--parallel`; quad_easy (Ouster 128) 10.3 Hz with `--parallel` — real time.
+Car (Boreas, Velodyne 128): 3.9 Hz serial, 4.9 Hz parallel — not real time (the 1024 × 1024 panorama of 128 rings × 8 is the likely cost).
+For the paper the runtime must be stated at a fixed thread budget (`KISS_THREADS=4` + OMP / OPENBLAS / MKL_NUM_THREADS=4, #168, in progress).
 
 ## Limits (to state in the paper)
 
