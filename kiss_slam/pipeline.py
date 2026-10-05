@@ -232,18 +232,36 @@ class SlamPipeline(OdometryPipeline):
         # ICP of scan idx, so the two overlap.  Reading stays in order (serial rosbag reader).
         prefetch = self.kiss_slam.image_motion_parallel
         pending = None
+        # #176: scans are read (in order, the reader is serial) by a background thread a few scans ahead, so reading overlaps
+        # the registration; the scans and their order are unchanged (ported from b9_joint_new, #159).
+        import queue, threading
+        q = queue.Queue(maxsize=4)
+
+        def _read_all():
+            try:
+                for i in range(self._first, self._last):
+                    q.put((self._next(i), None))
+            except BaseException as e:                    # re-raised in the main thread
+                q.put((None, e))
+        threading.Thread(target=_read_all, daemon=True).start()
+
+        def read_next():
+            item, err = q.get()
+            if err is not None:
+                raise err
+            return item
         for idx in trange(self._first, self._last, unit=" frames", dynamic_ncols=True):
             if prefetch:
                 if pending is None:
-                    pending = self._next(idx)
+                    pending = read_next()
                     self.kiss_slam.submit_image_motion(*pending)
                 frame, timestamps, intensity, ring = pending
                 pending = None
                 if idx + 1 < self._last:
-                    pending = self._next(idx + 1)
+                    pending = read_next()
                     self.kiss_slam.submit_image_motion(*pending)
             else:
-                frame, timestamps, intensity, ring = self._next(idx)
+                frame, timestamps, intensity, ring = read_next()
             start_time = time.perf_counter_ns()
             self.kiss_slam.process_scan(frame, timestamps, intensity, ring)
             self.times[idx - self._first] = time.perf_counter_ns() - start_time

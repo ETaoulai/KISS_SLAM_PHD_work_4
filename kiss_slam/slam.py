@@ -597,7 +597,13 @@ class KissSLAM:
             if self.diag_cfg.save_deskewed_fraction < 1.0:             # own RNG: the trajectory is unaffected
                 frame_v = frame_v[self._save_rng.random(len(frame_v)) < self.diag_cfg.save_deskewed_fraction]
             self.deskewed_frames.append(frame_v)
-        mapping_frame = voxel_down_sample(deskewed_frame, self.local_map_voxel_size)
+        # #176: the same scan down-sampled at the same voxel size by the ICP (car: ICP voxel 1.0 m -> 0.5 = local map voxel) is reused
+        # instead of computed again - the same points; otherwise (handheld: different sizes) computed as before.
+        reuse, self._reuse_downsample = getattr(self, "_reuse_downsample", None), None
+        if reuse is not None and reuse[0] is deskewed_frame and reuse[2] == self.local_map_voxel_size:
+            mapping_frame = reuse[1]
+        else:
+            mapping_frame = voxel_down_sample(deskewed_frame, self.local_map_voxel_size)
         self.voxel_grid.integrate_frame(mapping_frame, current_pose)
 
         # Accumulate intensity for the mapping voxels (used later for ColoredICP)
@@ -950,6 +956,7 @@ class KissSLAM:
         odo.last_delta = np.linalg.inv(odo.last_pose) @ new_pose
         odo.last_pose = new_pose
         self._kept_deskew_delta = kept_delta
+        self._reuse_downsample = (deskewed, frame_downsample, odo.config.mapping.voxel_size * 0.5)   # #176
         return deskewed, source
 
     def _deskew_with_icp_motion(self, frame, timestamps, new_pose):
