@@ -68,7 +68,11 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
 - `scripts/evaluate_official.py` — **η ΜΟΝΗ αξιολόγηση από 25/9 (#061, ΑΠΟΦΑΣΗ Μ.Τ.):** πρωτόκολλο evo του Oxford Spires (APE `--align --t_max_diff 0.01`,
   RPE 1 m / 1 s), κάθε θέση στη στιγμή που αντιπροσωπεύει, **χωρίς μετατόπιση χρόνου**. Για όλο τον πίνακα: `results_table.py` (προεπιλογή).
   Τα `evaluate_ncd.py` / `evaluate_gt.py` / `results_table.py --legacy` μόνο για αναπαραγωγή παλιών πινάκων.
-- **Μέθοδος:** η προεπιλογή του `after_091` (βραχίονας `base092`: upright SURF + καθοδηγούμενη αντιστοίχιση, δύο αρχές, εφεδρεία εικόνας απόστασης, σ = 2.0)· η έκδοση του 29/9 (`surftworangefb`,
+- **ΚΛΕΙΔΩΜΕΝΗ ΜΕΘΟΔΟΣ ΓΙΑ ΤΟ RA-L (ΑΠΟΦΑΣΗ Μ.Τ. 5/10): κλάδος `ral_method`** (από `after_091`) — η επιλογή Γ είναι η **προεπιλογή του config**: SURF, δύο αρχές (5°), εφεδρεία εικόνας
+  απόστασης, ανάμειξη για το deskew, εφεδρεία KISS από την 4η συνεχόμενη αποτυχία, σ = 2.0· εντολή: `run_ncd.py surf <src> <out> --seed=<s> --config=<threads4.yaml> [--parallel]` χωρίς άλλες επιλογές.
+  **Προσοχή:** ο κύριος checkout είναι σε αυτόν τον κλάδο και το editable install τον φορτώνει — κάθε run από εδώ τρέχει τη Γ· οι παλιοί βραχίονες με ρητές επιλογές
+  (`--cv-blend=off --fallback=identity --fallback-after=1 --range=none` για την πριν από το #092 συμπεριφορά χωρίς εφεδρεία απόστασης). Ablation: `docs/ablation_165.md` (`scripts/ablation_table_165.py`).
+- **Μέθοδος (πριν το κλείδωμα):** η προεπιλογή του `after_091` (βραχίονας `base092`: upright SURF + καθοδηγούμενη αντιστοίχιση, δύο αρχές, εφεδρεία εικόνας απόστασης, σ = 2.0)· η έκδοση του 29/9 (`surftworangefb`,
   ablation #081, `docs/results_ablation_081.md`) είναι η προηγούμενη. **Υποψήφιες για το RA-L (5/10, απόφαση εκκρεμεί):** Β `--cv-blend=adaptive --cv-blend-use=deskew` (`bd137`), Γ Β + `--fallback=kiss --fallback-after=4` (`bfc150`).
   Συνολικός πίνακας: `docs/results_summary_162.md` (`scripts/summary_table_162.py`).
   Runs από 29/9 στον εξωτερικό SSD (exFAT, `~/kiss_runs_ssd`, χωρίς symbolic links): `results_table.py --runs=/home/photogrammetry/kiss_runs_ssd`.
