@@ -251,6 +251,13 @@ KISS_SLAM_OUT_DIR=runs/int  kiss_slam_pipeline data/church_02_cut.bag -t /hesai/
 Ο intensity βραχίονας είναι ντετερμινιστικός (seeded RNG), οπότε επαναλήψεις του ίδιου
 βραχίονα δίνουν πανομοιότυπη τροχιά.
 
+### Τρέχουσες εντολές (5/10)
+
+Προεπιλογή (`base092`): `python scripts/run_ncd.py surf <bag/φάκελος> <out> --seed=<s> --config=<threads4.yaml> --two-start=5 --range=fallback [--parallel] <επιλογές της ακολουθίας από all_seqs.tsv>`.
+Υποψήφιες: Β + `--cv-blend=adaptive --cv-blend-use=deskew`· Γ + `--cv-blend=adaptive --cv-blend-use=deskew --fallback=kiss --fallback-after=4`. Όλες οι επιλογές από 3/10: `CLAUDE.md`.
+Β.9: από τον worktree `python scripts/worktree_run.py scripts/run_ncd.py surf ... --ct=joint --ct-lambda=0.1 --parallel` (κλάδος `b9_joint_new`, C++: `scripts/build_ct_accumulate.sh`).
+Batches: systemd μονάδες (`systemd-run --user ... -p MemoryMax=… -p OOMPolicy=continue`), launchers στο `kiss_runs/`, runs στο `kiss_runs_ssd/`.
+
 ### Η μέθοδος με μία εντολή (`--image-deskew`, #027–#032)
 
 ```bash

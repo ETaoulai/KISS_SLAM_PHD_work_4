@@ -9,7 +9,7 @@
 Το §7β της σύνοψης έχει τα νεότερα ευρήματα (#033–#039) — **πρώτο απ' όλα: το ATE ενός run δεν είναι μετρήσιμο
 μέγεθος** (σ = 0.02–0.04 m), οπότε κάθε σύγκριση γίνεται με RPE/μήκος διαδρομής ή με 4+ runs.
 
-**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 3/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
+**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 5/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
 
 **Η μέθοδος αναλυτικά (εξισώσεις, κάθε επιλογή με την εγγραφή της): [`docs/method_description.md`](docs/method_description.md).** Ερώτημα
 θεωρητικής αξιολόγησης για ειδικό: [`docs/review_prompt_registration_deskew.md`](docs/review_prompt_registration_deskew.md).
@@ -46,7 +46,8 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
   (git → GitHub **`ETaoulai/KISS_SLAM_PHD_work_4`**, private, remote `origin`, από 2/10: `main` = όλη η δουλειά ως το #091 (`70a5947`, ο κλάδος `rotation_bearing`).
   Τα παλιά: `KISS_SLAM_PHD_work_3` = remote `archive3` (κλάδοι `main` ως το #080, `after_080`, `rotation_bearing`)· `KISS_SLAM_PHD_work_2` = remote `archive2` (κλάδοι `after_two_start`, `vertical_drift`, `intensity_norm`, `vertical_constraint`, `fast_fallback`)·
   `KISS_SLAM_PHD_work` = remote `archive` (κλάδοι `main` … `gating`, σταματά στο `fa86f3b`).)
-  **Ο `main` δεν αλλάζει απευθείας (απόφαση Μ.Τ. 26/9):** κάθε νέα δουλειά σε δικό της κλάδο από τον `origin/main` — τρέχων `after_091` (2/10).
+  **Ο `main` δεν αλλάζει απευθείας (απόφαση Μ.Τ. 26/9):** κάθε νέα δουλειά σε δικό της κλάδο από τον `origin/main` — τρέχων `after_091` (2/10· docs και επιλογές της μεθόδου).
+  Β.9 σε git worktree `/home/photogrammetry/Kiss_SLAM-b9` (εκτέλεση με `scripts/worktree_run.py`, και `--parallel` από #157): κλάδοι `deskew_in_icp` → `b9_joint` (#156–#157) → `b9_joint_new` (C++, #158–#159).
   Προσοχή: `push.default = upstream` — ένας κλάδος που παρακολουθεί τον `origin/main` σπρώχνει στον `main`· νέοι κλάδοι με `git push -u origin <κλάδος>:<κλάδος>` (με ρητό όνομα· χωρίς αυτό ένας κλάδος από τον `origin/main` πάει στον `main`). OpenCV χτισμένο με SURF.
   Δεδομένα στο `/media/photogrammetry/A26C3DDF6C3DAF431/data/` (όχι στο `data/` του repo). Νέα datasets (NCD 2020 long / dynamic_spinning,
   Hilti 2021, NTU VIRAL) οργανωμένα ως σύνδεσμοι στο `/home/photogrammetry/kiss_data/` (ext4) — κατάσταση: `docs/datasets.md`.
@@ -67,7 +68,9 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
 - `scripts/evaluate_official.py` — **η ΜΟΝΗ αξιολόγηση από 25/9 (#061, ΑΠΟΦΑΣΗ Μ.Τ.):** πρωτόκολλο evo του Oxford Spires (APE `--align --t_max_diff 0.01`,
   RPE 1 m / 1 s), κάθε θέση στη στιγμή που αντιπροσωπεύει, **χωρίς μετατόπιση χρόνου**. Για όλο τον πίνακα: `results_table.py` (προεπιλογή).
   Τα `evaluate_ncd.py` / `evaluate_gt.py` / `results_table.py --legacy` μόνο για αναπαραγωγή παλιών πινάκων.
-- **Μέθοδος του paper (ΑΠΟΦΑΣΗ Μ.Τ. 29/9): δύο αρχές + εφεδρεία εικόνας απόστασης** (`surftworangefb`)· ablation στο #081, `docs/results_ablation_081.md`.
+- **Μέθοδος:** η προεπιλογή του `after_091` (βραχίονας `base092`: upright SURF + καθοδηγούμενη αντιστοίχιση, δύο αρχές, εφεδρεία εικόνας απόστασης, σ = 2.0)· η έκδοση του 29/9 (`surftworangefb`,
+  ablation #081, `docs/results_ablation_081.md`) είναι η προηγούμενη. **Υποψήφιες για το RA-L (5/10, απόφαση εκκρεμεί):** Β `--cv-blend=adaptive --cv-blend-use=deskew` (`bd137`), Γ Β + `--fallback=kiss --fallback-after=4` (`bfc150`).
+  Συνολικός πίνακας: `docs/results_summary_162.md` (`scripts/summary_table_162.py`).
   Runs από 29/9 στον εξωτερικό SSD (exFAT, `~/kiss_runs_ssd`, χωρίς symbolic links): `results_table.py --runs=/home/photogrammetry/kiss_runs_ssd`.
 - **Επιλογές, όχι προεπιλογή (ΑΠΟΦΑΣΗ Μ.Τ. 28/9):** εικόνα απόστασης ως εφεδρεία (`--range=fallback`, #069/#071· μέρος της μεθόδου του paper) και βάρος στροφής του γράφου
   (`--rotation-weight=100`, #067/#070)· βραχίονες `surftworangefb`, `*rw` στο `results_table.py --all-arms`.
@@ -76,7 +79,12 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
 - `baselines/` + `scripts/run_baseline.py` / `lio_to_tum.py` / `extract_lio_topics.py` — οι άλλες μέθοδοι της σύγκρισης (#083: GenZ-ICP, MAD-ICP,
   CT-ICP, Traj-LO, FAST-LIO2, COIN-LIO), με pinned commits και patches· `baselines/README.md`.
 - `scripts/evaluate_hilti.py` — επίσημο πρωτόκολλο του Hilti SLAM Challenge 2021 (τροχιά IMU, pole/prism/imu, 1 s, SE(3), APE)· `docs/datasets.md`.
-- `scripts/evaluate_ntu.py` — επίσημο πρωτόκολλο του NTU VIRAL (σώμα + πρίσμα 0.40 m, 0.05 s, SE(3), ATE, πληρότητα)· `docs/datasets.md`.
+- `scripts/evaluate_ntu.py` — επίσημο πρωτόκολλο του NTU VIRAL (σώμα + πρίσμα 0.40 m, 0.05 s, SE(3), ATE, πληρότητα)· `docs/datasets.md`. Δέχεται και την παλιά μορφή βαθμονόμησης (rtp / tnp / spms).
+- **Λίστα ακολουθιών:** `kiss_runs/all_seqs.tsv` = 42 (27 + 15 νέες NTU, 4/10)· οι 27 στο `all_seqs_27.tsv`· Boreas (όχημα) χωριστά (`--last=3000 --intensity-scale=1.0`).
+- **Επιλογές της μεθόδου από 3/10** (`run_ncd.py`, όλες εκτός προεπιλογής): `--cv-blend=adaptive [--cv-blend-use=deskew|both] [--cv-blend-part=rotation]` (#131/#137), `--fallback=kiss [--fallback-after=N]`
+  (#146/#150), `--multi-baseline[=translation]` (#130/#131), `--fuse-range[=weak]` (#132/#152), `--drop-stationary` (#132), `--sectors=8 [--sectors-part=rotation]` (#093/#135), `--cv-winner-deskew` (#163).
+- Διαγνωστικά offline (#126–#131): `scripts/score_motion_gyro.py`, `score_blend_gyro.py`, `analyse_gated_deskew.py`, `analyse_degenerate_image.py`, `analyse_icp_failure_detector.py`,
+  `analyse_translation_scale.py`, `analyse_translation_consensus.py`, `analyse_blend_reference.py`.
 - `scripts/dump_failed_matches.py` — εικόνες (πανοράματα + αντιστοιχίσεις) κάθε σάρωσης όπου αποτυγχάνει η κίνηση της εικόνας →
   `/home/photogrammetry/kiss_runs/failed_matches/` (ζήτημα Μ.Τ. 28/9)· κατά το run: `run_ncd.py --save-failed`.
 - `scripts/eval_motion_npz.py` — σφάλμα ενός αποθηκευμένου npz κίνησης έναντι GT, χωρίς επανεκτίμηση.

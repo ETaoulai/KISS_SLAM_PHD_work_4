@@ -91,3 +91,12 @@ python scripts/evaluate_ntu.py eee_03 <run dir> --out=<dir>
 σύνδεσμοι στο `~/kiss_data/ntu_viral/<seq>`· GT στο `ntuviral_gt/<seq>/ground_truth.csv` (ήδη). Στο `kiss_runs/all_seqs.tsv` (42 γραμμές· οι 27 παλιές στο `all_seqs_27.tsv`).
 **Προσοχή:** rtp / tnp / spms έχουν την παλιά μορφή βαθμονόμησης (`T_Body2Lidar`, το πρίσμα ως `T_Body2Imu`, ίδιες τιμές) — το `evaluate_ntu.py` δέχεται πλέον και τα δύο ονόματα.
 spms: πληρότητα 99 % σε όλα τα runs (και του KISS).
+
+
+## Οχήματα (1–5/10)
+
+- **KITTI odometry 07** (#084, #085): οι σαρώσεις του raw / sync είναι **ήδη διορθωμένες** ως προς την κίνηση — ακατάλληλο για δοκιμή deskew. Δεδομένα `Extreme SSD/kitti/`.
+- **Boreas** `boreas-2021-01-26-11-22`, πρώτες 3000 σαρώσεις (311 s, 1.34 km), Velodyne Alpha Prime 128, raw με ring και χρόνο ανά σημείο (#085). Δεδομένα `Extreme SSD/boreas/`, GT
+  `gt_boreas-2021-01-26-11-22_lidar_tum.txt` (ανά σάρωση)· runs `kiss_runs_ssd/boreas/2021-01-26-11-22_3000/`· `run_ncd.py ... --last=3000 --intensity-scale=1.0`· `oracle_motion.npz` (#127).
+- **MulRan** (KAIST / Riverside, Ouster OS1-64): λήψη από τον Μ.Τ. (φόρμα αιτήματος, 5/10). Πριν από runs: έλεγχος αν οι σαρώσεις `.bin` (x, y, z, intensity) επιτρέπουν deskew (χρόνος ανά σημείο ή
+  σειρά στηλών 1024 × 64).
