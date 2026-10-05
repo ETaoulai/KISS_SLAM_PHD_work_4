@@ -51,10 +51,14 @@ def _motion_worker_init(estimator_kwargs, module_knobs):
     for name, value in module_knobs.items():
         setattr(idsk, name, value)
     _WORKER_ESTIMATOR = idsk.ScanMotionEstimator(**estimator_kwargs)
+    print(f"KissSLAM| image-motion worker uses {idsk.__file__}", flush=True)   # #157: which checkout the worker loaded
 
 
 def _motion_worker(frame, timestamps, intensity, ring):
-    return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
+    """(motion, inliers, matched pairs) - the pairs for the B.9 joint registration (#157)."""
+    import kiss_slam.intensity_deskew as idsk
+    M, n = _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)
+    return M, n, (idsk.match_motion.last_pairs if M is not None else None)
 
 
 def transform_points(pcd, T):
@@ -735,7 +739,8 @@ class KissSLAM:
             if self._motion_pool is not None:
                 if not self._motion_futures:        # the caller did not prefetch: submit now and wait
                     self.submit_image_motion(frame, timestamps, intensity, ring)
-                M = self._motion_futures.popleft().result()
+                M, n_inl, self._last_pairs = self._motion_futures.popleft().result()   # #157: pairs from the worker too
+                self.image_motion_log.append((self._frame_counter, np.nan if M is None else np.asarray(M, float), n_inl))
             else:
                 M, n_inl = self._image_motion_est.motion(frame, timestamps, intensity, ring)
                 import kiss_slam.intensity_deskew as _idsk2
