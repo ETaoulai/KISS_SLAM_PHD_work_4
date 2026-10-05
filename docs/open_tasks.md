@@ -209,3 +209,16 @@ MulRan (όχημα, λήψη από τον Μ.Τ.).
 **ΑΝΟΙΧΤΗ ΔΟΚΙΜΗ (ΑΠΟΦΑΣΗ Μ.Τ. 5/10: «κράτα το ανοιχτό»):** annealing ανά σάρωση χωρίς αλλαγή C++ — 2–3 διαδοχικές κλήσεις της καταχώρισης του KISS με φθίνον σ (π.χ. 2.0 → 1.0 → 0.5), η καθεμία
 από το αποτέλεσμα της προηγούμενης· κατώφλι όχι κάτω από ~0.5 m. Προσοχή: αλλάζει τον ICP (τη βάση) — εκτός της εστίασης ως τώρα· σειρά: ένα πλήρες run (christ-church-02 + ένα NTU) → υπο-δοκιμή.
 Όχι για την έκδοση του RA-L.
+
+
+## Συνέχεια σε νέα συνεδρία — τι τρέχει και πώς βαθμολογείται (5/10)
+
+**Σε εξέλιξη:** #164 — επιλογή Γ (`bfc150`) σε όλες τις 42 + Boreas × 4· systemd μονάδα `kiss-bfc164`, launcher `kiss_runs/bfc164_launch.sh`, log `kiss_runs/bfc164_launch.log`,
+**τέλος = αρχείο `kiss_runs/bfc164_FINISHED`** (έλεγχος: `systemctl --user is-active kiss-bfc164`, `grep -c "exit 0)" ~/kiss_runs/bfc164_launch.log` → 144 νέα + 28 skip).
+**Βαθμολόγηση όταν τελειώσει:**
+1. 27 ακολουθίες: `python scripts/results_table.py --all-arms --runs=/home/photogrammetry/kiss_runs_ssd --out=/home/photogrammetry/kiss_runs/results_official_allarms_164` (ο `bfc150` έχει ετικέτα).
+2. 15 νέες NTU: για κάθε `q` `python scripts/evaluate_ntu.py $q $E/kiss_s0 $E/base092_s{0..3} $E/bd137_s{0..3} $E/bf148_s{0..3} $E/bfc150_s{0..3} --out=<scratch>` (E = `kiss_runs_ssd/ntu_viral/$q`),
+   έξοδος ως `n149_<q>.txt` (γραμμές «q run ATE …»).
+3. Boreas: `python scripts/evaluate_official.py "/media/photogrammetry/Extreme SSD/boreas/gt_boreas-2021-01-26-11-22_lidar_tum.txt" <runs …> --frame=none` (στήλες run, APE, RPE t, RPE r).
+4. Συνολικός πίνακας: `python scripts/summary_table_162.py <csv του 1> <φάκελος των n149_*.txt> <boreas 4 στήλες> docs/results_summary_164.md` (περιέχει τον Γ).
+5. Αναφορά με πίνακα (ATE + RTE) και εξήγηση· STATUS → log (#164)· μετά: απόφαση Β / Γ (Μ.Τ.) → νέος κλάδος με κλειδωμένη μέθοδο → ablation → κείμενο → χρόνοι → MulRan.

@@ -32,6 +32,7 @@ ARMS = [  # (csv arm label, short name, boreas folder prefix, NTU-new prefix, Li
     ("default of after_091, adaptive blend for the DESKEW only, ICP start = image (#137 / #138 / #140)", "+ blend (B)", "bd137", "bd137", True),
     ("default of after_091, PAIR: blend for the deskew + fallback = KISS (#148 / #149)", "+ blend + fallback (A)", "bf148", "bf148", True),
     ("default of after_091, COMBINATION: blend for the deskew + sector weights for the rotation (#141 / #142 / #144)", "+ blend + sectors", "cmb141", None, True),
+    ("default of after_091, OPTION C: blend for the deskew + fallback = KISS from the 4th consecutive failure (#150 / #151 / #164)", "+ blend + fallback after 4 (C)", "bfc150", "bfc150", True),
 ]
 GROUPS = {
     "NCD": ["01_short", "02_long_experiment", "quad_easy", "quad_hard", "cloister", "math_easy", "math_medium", "underground_easy",
