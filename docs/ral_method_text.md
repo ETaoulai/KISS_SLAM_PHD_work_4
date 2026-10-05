@@ -69,9 +69,10 @@ moving sensor. *Effect* (row 8, #164): identical to row 7 on 30 of 43 sequences;
 
 ## Runtime
 
-Real time on one CPU core for the ICP plus one worker process for the image motion (`--parallel`): quad_easy (Ouster 128, idle machine)
-10.3 Hz over the whole run, 12 Hz per scan (#161); the blend and the fallback add no measurable cost (240.5 s vs 244.5 s serial, #165).
-Hesai / car: #166 (in progress).
+Measured alone on one machine (48 cores; #161, #165, #166) **with unrestricted thread pools**: a serial run uses about 10–13 cores (OpenBLAS / numpy,
+OpenCV — capped at 8 —, the KD-tree of the two-start check; KISS's ICP 4 threads) and 1–3 GB of memory. quad_easy (Ouster 128): 10.3 Hz with
+`--parallel`, 8–9 Hz serial; the blend and the fallback add no measurable cost (240.5 vs 244.5 s serial, #165). Hesai and car: #166. For the paper
+the runtime must be stated at a fixed thread budget (`KISS_THREADS=4` + OMP / OPENBLAS / MKL_NUM_THREADS=4, #168, in progress).
 
 ## Limits (to state in the paper)
 
