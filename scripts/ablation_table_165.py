@@ -19,8 +19,8 @@ from collections import defaultdict
 ROWS = [
     ("KISS-SLAM", "KISS-SLAM", "kiss"),
     ("KISS-SLAM, no deskew", "KISS-SLAM without deskew", "kissnodeskew"),
-    ("i3 + SURF", "+ image motion (deskew + ICP start)", None),
-    ("i3 + SURF, two starting points", "+ two starts", None),
+    ("i3 + SURF", "+ image motion (deskew + ICP start)", "ablsurf167"),
+    ("i3 + SURF, two starting points", "+ two starts", "ablsurftwo167"),
     ("i3 + SURF, two starting points, range image when intensity fails", "+ range-image fallback", "surftworangefb"),
     ("default of after_091 (upright SURF + guided matching, shift rule), two starts + range fallback (#092)",
      "+ upright SURF / guided matching (implementation)", "base127"),

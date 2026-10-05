@@ -24,7 +24,8 @@ removed (#025–#027). The result is the sweep motion M_k.
 *Why:* KISS's constant-velocity deskew assumes the motion of the previous scan; on a handheld or flying sensor that assumption is often
 wrong within 0.1 s, and the deskew then adds error instead of removing it — KISS without deskew is better than KISS on 17 of 26 sequences
 (ablation, row 2; RPE 1 m rotation 2.81° → 0.98°). *Effect* (ablation, row 3): APE 0.42 / 0.27 / 0.32 / 0.65 of KISS on NCD / Spires / Hilti / NTU,
-no failure (KISS: 3), better than the previous row on 18 of 25 sequences.
+better than the previous row on 18 of 26 sequences; one failure, the car (Boreas, APE 7–62 m over 4 seeds, 116× KISS): there the intensity image fails on
+31 % of scans and, without the later safeguards, the ICP then starts from zero motion at 10 m/s (#167).
 
 ## 2. Deskew and initial guess from the same motion (#030)
 
@@ -42,12 +43,13 @@ the deskew for accuracy.
 When M_k and the constant-velocity guess differ by more than 5° of rotation, the scan is registered a second time from constant velocity
 (without deskew), and the registration whose points fit the local map better is kept (the image wins ties within a 2 % margin). This happens
 on under 5 % of scans and protects against a wrong image motion (few or repetitive matches, fast rotation). *Effect* (row 4): Spires 0.27 → 0.18
-of KISS (the facade aliasing of Blenheim, #053–#057); elsewhere neutral.
+of KISS (the facade aliasing of Blenheim, #053–#057); car 116 → 12× KISS (APE 3.1–3.3 m, #167); elsewhere neutral.
 
 ## 4. Range-image fallback (#069, #078)
 
 When the intensity image gives no motion, the same estimation runs on a range panorama of the same scan (computed only then). *Effect*
-(row 5): Hilti 0.34 → 0.25 and NTU 0.66 → 0.49 of KISS, where the intensity image of the 16- / 64-beam Ousters fails on 20–31 % of scans.
+(row 5): Hilti 0.34 → 0.25 and NTU 0.66 → 0.49 of KISS, where the intensity image of the 16- / 64-beam Ousters fails on 20–31 % of scans; car 12 → 1.03× KISS (Boreas, 935 of 3000 scans
+from the range image, #167) — the step that makes the method work on the car at all.
 
 ## 5. Adaptive blend for the deskew (B, #131, #137–#140)
 

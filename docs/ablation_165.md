@@ -9,9 +9,9 @@ failures = APE > 5 m over all groups; last column: sequences better / worse than
 |---|---|---|---|---|---|---|---|---|---|
 | KISS-SLAM | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 21.41 / 2.805 | 3 | – |
 | KISS-SLAM without deskew | 0.88 | 0.78 | 0.49 | 0.95 | 26.79 | – | 10.32 / 0.979 | 3 | 17 / 5 (of 26) |
-| + image motion (deskew + ICP start) | 0.42 | 0.27 | 0.32 | 0.65 | – | – | 7.28 / 1.097 | 0 | 18 / 3 (of 25) |
-| + two starts | 0.42 | 0.18 | 0.34 | 0.66 | – | – | 7.26 / 1.065 | 0 | 2 / 4 (of 25) |
-| + range-image fallback | 0.41 | 0.18 | 0.25 | 0.49 | 1.03 | – | 7.25 / 1.053 | 0 | 6 / 2 (of 25) |
+| + image motion (deskew + ICP start) | 0.42 | 0.27 | 0.32 | 0.65 | 115.52 | – | 7.28 / 1.097 | 1 | 18 / 4 (of 26) |
+| + two starts | 0.42 | 0.18 | 0.34 | 0.66 | 12.11 | – | 7.26 / 1.065 | 0 | 3 / 4 (of 26) |
+| + range-image fallback | 0.41 | 0.18 | 0.25 | 0.49 | 1.03 | – | 7.25 / 1.053 | 0 | 7 / 2 (of 26) |
 | + upright SURF / guided matching (implementation) | 0.42 | 0.16 | 0.24 | 0.51 | 0.88 | 0.52 | 7.01 / 0.982 | 0 | 9 / 6 (of 26) |
 | + blend for the deskew (B) | 0.41 | 0.16 | 0.24 | 0.37 | 0.73 | 0.44 | 6.86 / 0.954 | 0 | 9 / 2 (of 26) |
 | + KISS fallback after 4 failures (C) = locked method | 0.41 | 0.16 | 0.24 | 0.38 | 0.73 | 0.32 | 6.86 / 0.954 | 0 | 0 / 0 (of 26) |
