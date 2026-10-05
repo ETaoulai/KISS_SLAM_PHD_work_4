@@ -18,6 +18,11 @@ sys.path.insert(0, str(ROOT))
 # #157: a "spawn" worker (image_deskew.parallel) re-imports this file as __mp_main__ BEFORE it unpickles its initializer: the two lines above
 # then make the worker load THIS checkout too; the pipeline itself must run only in the parent.
 if __name__ == "__main__":
+    # #157: spawned workers (image_deskew.parallel) start a fresh interpreter, whose site would install the editable redirect again and load
+    # the MAIN checkout - give them a Python without .pth hooks and with this checkout first (scripts/_python_worktree.sh).
+    import multiprocessing, os
+    os.environ["WORKTREE_PYTHON"] = sys.executable
+    multiprocessing.set_executable(str(ROOT / "scripts" / "_python_worktree.sh"))
     script = sys.argv[1]
     sys.argv = sys.argv[1:]
     runpy.run_path(script, run_name="__main__")
