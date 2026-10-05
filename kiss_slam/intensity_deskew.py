@@ -20,11 +20,9 @@ velocity over the two scans cannot follow; "ca" lets it change.
 the later sensor frame in the earlier one (the quantity KISS calls `delta` and deskews
 with), estimated from the previous scan and this one; None when it cannot be estimated.
 """
-import os
-
 import cv2
 
-cv2.setNumThreads(int(os.environ.get("KISS_THREADS", "0")) or 8)   # όχι όλους τους πυρήνες (Λ.Γ. 18/9)· KISS_THREADS=N: προϋπολογισμός νημάτων (#168)
+cv2.setNumThreads(8)   # όχι όλους τους πυρήνες (Λ.Γ. 18/9)
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation
