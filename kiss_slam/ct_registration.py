@@ -14,8 +14,16 @@ first-order interpolation of CT-ICP, d x_i / d(dtheta_b, dt_b) = (1 - s_i) [-[R(
 (left perturbations in the world frame).  Prototype: nearest neighbours by a KD-tree on the local map's points (KISS's C++ map exposes no
 neighbour search to Python) - speed is not the point here.
 """
+import os
+
 import numpy as np
 from scipy.spatial import cKDTree
+
+try:                                                                   # #158: C++ inner loop (scripts/build_ct_accumulate.sh)
+    from kiss_slam import _ct_accumulate as _CT
+except ImportError:                                                    # pragma: no cover - the Python version below
+    _CT = None
+USE_CPP = _CT is not None and os.environ.get("KISS_CT_PYTHON") != "1"   # KISS_CT_PYTHON=1 forces the Python version (checks)
 from scipy.spatial.transform import Rotation, Slerp
 
 
@@ -83,9 +91,37 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
     Tb, Te = T_prev_end.copy(), T_init_end.copy()
     if len(map_points) == 0 or len(source) < 10:
         return Tb, Te
-    tree = tree if tree is not None else cKDTree(map_points)
+    bound = 3.0 * sigma if voxel is None else min(3.0 * sigma, 2.0 * np.sqrt(3.0) * voxel)
+    if USE_CPP:                                                        # #158: grid with cell = bound -> the same nearest neighbour as the tree
+        grid = _CT.Grid(np.ascontiguousarray(map_points, dtype=np.float64), float(bound))
+        src_c = np.ascontiguousarray(source, dtype=np.float64); s_c = np.ascontiguousarray(s_src, dtype=np.float64)
+    else:
+        tree = tree if tree is not None else cKDTree(map_points)
     w_prev, v_prev = prev_motion
     for _ in range(max_iter):
+        if USE_CPP:
+            w_be = Rotation.from_matrix(Tb[:3, :3].T @ Te[:3, :3]).as_rotvec()
+            H, g, n = _CT.accumulate(grid, src_c, s_c, np.ascontiguousarray(Tb[:3, :3]), w_be, Tb[:3, 3].copy(), Te[:3, 3].copy(),
+                                     float(sigma), float(bound))
+            if n < 10:
+                break
+            H, g = np.array(H), np.array(g)
+            if img is not None and len(img[0]) >= 3:                    # image matches as residuals (joint) - few, stays in Python
+                pw, q_img, s_img = img
+                xq = place(q_img, s_img, Tb, Te)
+                ri = xq - pw
+                ki = img_kernel if img_kernel is not None else sigma
+                wi = img_weight * ki ** 2 / (ki + (ri ** 2).sum(1)) ** 2
+                Rq = xq - ((1.0 - s_img)[:, None] * Tb[:3, 3] + s_img[:, None] * Te[:3, 3])
+                Ji = np.zeros((len(ri), 3, 12)); Jri = -_skew(Rq)
+                Ji[:, :, 0:3] = (1.0 - s_img)[:, None, None] * Jri; Ji[:, :, 3:6] = (1.0 - s_img)[:, None, None] * np.eye(3)
+                Ji[:, :, 6:9] = s_img[:, None, None] * Jri; Ji[:, :, 9:12] = s_img[:, None, None] * np.eye(3)
+                Jwi = Ji * wi[:, None, None]
+                H += np.einsum("nki,nkj->ij", Jwi, Ji); g += np.einsum("nki,nk->i", Jwi, ri)
+            Tb, Te, done = _constrained_step(H, g, n, Tb, Te, T_prev_end, w_prev, v_prev, lam_loc, lam_vel, tol)
+            if done:
+                break
+            continue
         x = place(source, s_src, Tb, Te)
         # KISS searches the closest neighbour only in the 27 voxels around the point (<= 2 sqrt(3) voxel sizes), THEN applies 3 sigma
         bound = 3.0 * sigma if voxel is None else min(3.0 * sigma, 2.0 * np.sqrt(3.0) * voxel)
@@ -136,6 +172,24 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
         if np.linalg.norm(d) < tol:
             break
     return Tb, Te
+
+
+def _constrained_step(H, g, n, Tb, Te, T_prev_end, w_prev, v_prev, lam_loc, lam_vel, tol):
+    """ECTLO's location / velocity constraints added to (H, g), one Gauss-Newton update - the same algebra as the Python loop (#158)."""
+    lam_l, lam_v = lam_loc * n, lam_vel * n
+    r_loc = np.concatenate([Rotation.from_matrix(Tb[:3, :3] @ T_prev_end[:3, :3].T).as_rotvec(), Tb[:3, 3] - T_prev_end[:3, 3]])
+    H[0:6, 0:6] += lam_l * np.eye(6)
+    g[0:6] += lam_l * r_loc
+    wm, vm = motion(Tb, Te)
+    r_vel = np.concatenate([wm - w_prev, vm - v_prev])
+    Jv = np.zeros((6, 12))
+    Rb_T = Tb[:3, :3].T
+    Jv[0:3, 0:3], Jv[0:3, 6:9] = -Rb_T, Rb_T
+    Jv[3:6, 3:6], Jv[3:6, 9:12] = -Rb_T, Rb_T
+    H += lam_v * Jv.T @ Jv
+    g += lam_v * Jv.T @ r_vel
+    d = -np.linalg.solve(H + 1e-9 * np.eye(12), g)
+    return _left(Tb, d[:6]), _left(Te, d[6:]), bool(np.linalg.norm(d) < tol)
 
 
 def deskew_to_end(points, s, Tb, Te):
