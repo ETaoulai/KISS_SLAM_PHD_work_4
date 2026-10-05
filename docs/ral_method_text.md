@@ -76,9 +76,8 @@ OpenCV — capped at 8 —, the KD-tree of the two-start check; KISS's ICP 4 thr
 The blend and the fallback add no measurable cost (christ-church-03 274 vs 287 s serial, 241 vs 241 s parallel; Boreas 764 vs 774 s serial, #166).
 Handheld, 10 Hz sensors: christ-church-03 (Hesai) 11.4 Hz serial, 12.9 Hz with `--parallel`; quad_easy (Ouster 128) 10.3 Hz with `--parallel` — real time.
 Car (Boreas, Velodyne 128): 3.9 Hz serial, 4.9 Hz parallel — not real time (the 1024 × 1024 panorama of 128 rings × 8 is the likely cost).
-With 4 threads per library (`KISS_THREADS=4` + OMP / OPENBLAS / MKL_NUM_THREADS=4, ICP 4; #168) the trajectories are identical and the runs 3–8 % slower;
-the budget is per library, so a run still uses 6–11 cores. Per scan: quad_easy 11.3 Hz with `--parallel` (8.8 Hz serial), christ-church-03 13.3 / 11.8 Hz,
-Boreas 5.0 / 4.0 Hz; memory 1.1–1.2 GB handheld, 2.5 GB car. Statement for the paper: real time on the handheld sensors with `--parallel`, 4–5 Hz on the car.
+The figures above are with the library defaults (no thread budget). A 4-thread-per-library budget was measured (#168: identical trajectories, 3–8 % slower, still
+6–11 cores) and then removed from the code (ΑΠΟΦΑΣΗ Μ.Τ. 5/10); the paper states the runtime as above, with the measured core count.
 
 ## Limits (to state in the paper)
 
