@@ -22,7 +22,10 @@ from scipy.spatial.transform import Rotation, Slerp
 def voxel_down_sample(points, s, voxel):
     """First point of each voxel, keeping its time (as kiss_icp's voxel_down_sample keeps one point per voxel)."""
     keys = np.floor(points / voxel).astype(np.int64)
-    _, first = np.unique(keys, axis=0, return_index=True)
+    keys -= keys.min(axis=0)                                   # #156: one int64 key per voxel - np.unique(axis=0) sorted 3 columns (slow)
+    span = keys.max(axis=0) + 1
+    flat = (keys[:, 0] * span[1] + keys[:, 1]) * span[2] + keys[:, 2]
+    _, first = np.unique(flat, return_index=True)              # first occurrence of each voxel, as before
     first = np.sort(first)
     return points[first], s[first]
 
@@ -35,10 +38,26 @@ def _skew(v):
 
 def place(points, s, Tb, Te):
     """World positions of points at their times between Tb and Te."""
-    rots = Rotation.from_matrix(np.stack([Tb[:3, :3], Te[:3, :3]]))
-    Rs = Slerp([0.0, 1.0], rots)(np.clip(s, 0.0, 1.0)).as_matrix()
+    # #156: slerp in closed form, R(s) = R_b exp(s log(R_b^T R_e)) (what scipy's Slerp computes), vectorised with Rodrigues - scipy Rotation
+    # objects per call were ~20 % of the run time.  Rotating R_b^T-free: R(s) p = R_b (exp(s w) p).
+    w = Rotation.from_matrix(Tb[:3, :3].T @ Te[:3, :3]).as_rotvec()
+    s = np.clip(s, 0.0, 1.0)
+    rp = _rodrigues_apply(s[:, None] * w, points) @ Tb[:3, :3].T
     t = (1.0 - s)[:, None] * Tb[:3, 3] + s[:, None] * Te[:3, 3]
-    return np.einsum("nij,nj->ni", Rs, points) + t
+    return rp + t
+
+
+def _rodrigues_apply(rv, p):
+    """exp(rv_i) p_i for N rotation vectors (Rodrigues; series below 1e-8 rad)."""
+    th = np.linalg.norm(rv, axis=1)
+    small = th < 1e-8
+    t = np.where(small, 1.0, th)
+    k = rv / t[:, None]
+    c, sn = np.cos(th), np.sin(th)
+    kxp = np.cross(k, p)
+    kdp = np.einsum("ij,ij->i", k, p)
+    out = p * c[:, None] + kxp * sn[:, None] + k * (kdp * (1.0 - c))[:, None]
+    return np.where(small[:, None], p + np.cross(rv, p), out)
 
 
 def _left(T, d):
@@ -70,7 +89,7 @@ def ct_register(source, s_src, map_points, T_prev_end, T_init_end, prev_motion, 
         x = place(source, s_src, Tb, Te)
         # KISS searches the closest neighbour only in the 27 voxels around the point (<= 2 sqrt(3) voxel sizes), THEN applies 3 sigma
         bound = 3.0 * sigma if voxel is None else min(3.0 * sigma, 2.0 * np.sqrt(3.0) * voxel)
-        dist, idx = tree.query(x, distance_upper_bound=bound, workers=-1)
+        dist, idx = tree.query(x, distance_upper_bound=bound, workers=1)   # #156: workers=-1 started Python threads per call (~22 % of run time)
         ok = np.isfinite(dist)
         n = int(ok.sum())
         if n < 10:
