@@ -158,7 +158,9 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "bfc150": "default of after_091, OPTION C: blend for the deskew + fallback = KISS from the 4th consecutive failure (#150 / #151 / #164)",
         "blinl203": "locked method C + blend weighted also by the scan inliers (--cv-blend-inliers, #200 / #203)",
         "r512": "locked method C, panorama 512 rows (x4 on 128 beams, x32 on 16 beams; #204)",
-        "w600m": "locked method C, Hesai native 600 columns x 512 rows (#205)"}
+        "w600m": "locked method C, Hesai native 600 columns x 512 rows (#205)",
+        "r512c": "locked method C, 512 rows + C++ image + look-ahead + range cache + KISS-ICP without GIL (#206)",
+        "w600c": "locked method C, Hesai 600 x 512 + C++ image + look-ahead + range cache + KISS-ICP without GIL (#206)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:
