@@ -187,6 +187,9 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 **Κλειστά (όχι):** δύο στάδια εικόνας σε δύο διεργασίες / νήμα (#180), OpenBLAS 1 νήμα (#182), ICP 8 / 16 νήματα (#187), upright AKAZE (#181), πλέγμα σημείων (#199), κανόνας κορεσμού (#198, δεν δοκιμάστηκε σε runs:
 τα σημεία δεν κορέννυνται στις 128 δέσμες), auto / ισοτροπικά pixel (#096, #169).
 
+**Σε εξέλιξη (#204 / #205, ΑΠΟΦΑΣΗ Μ.Τ. 6/10 «ξεκίνα 1 και 2»):** `r512` = 512 γραμμές (NCD 2021 + Boreas ×4, όλες οι NTU ×32) και `w600m` = Hesai 600 × 512 (6 Spires), 4 σπόροι, 136 runs, 8 παράλληλα·
+systemd `kiss-r512`, `kiss_runs/r512_204_launch.sh`, log `kiss_runs/r512_204_launch.log`, **τέλος = `kiss_runs/r512_204_FINISHED`** (136 «exit 0»). Βαθμολόγηση: `results_table.py --all-arms --runs=/home/photogrammetry/kiss_runs_ssd
+--out=/home/photogrammetry/kiss_runs/results_official_allarms_204` (ετικέτες `r512`, `w600m`), νέες NTU με `evaluate_ntu.py`, Boreas με evo· σύγκριση με `bfc150` όπως στο #203.
 **Ολοκληρώθηκε (#203):** 172 / 172 runs, βαθμολογήθηκαν (log #203· πίνακας `kiss_runs/results_official_allarms_203.{md,csv}`).
 
 ## Εκκρεμεί απόφαση Μ.Τ. (5/10): νέα προεπιλογή
