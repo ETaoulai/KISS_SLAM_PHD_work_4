@@ -51,10 +51,38 @@ def _motion_worker_init(estimator_kwargs, module_knobs):
     for name, value in module_knobs.items():
         setattr(idsk, name, value)
     _WORKER_ESTIMATOR = idsk.ScanMotionEstimator(**estimator_kwargs)
+    import os
+    out = os.environ.get("KISS_PROFILE_WORKER")              # #179, diagnostics only: cProfile of the image worker, dumped at its exit
+    if out:
+        import cProfile
+        import time
+        from multiprocessing import util
+        global _WORKER_PROFILE
+        _WORKER_PROFILE = (cProfile.Profile(), time.perf_counter(), [0.0])
+
+        def _dump():
+            prof, t0, busy = _WORKER_PROFILE
+            prof.dump_stats(out)
+            with open(out + ".txt", "w") as f:
+                f.write(f"worker alive {time.perf_counter() - t0:.1f} s, busy in motion() {busy[0]:.1f} s\n")
+        util.Finalize(None, _dump, exitpriority=100)
+
+
+_WORKER_PROFILE = None
 
 
 def _motion_worker(frame, timestamps, intensity, ring):
-    return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
+    if _WORKER_PROFILE is None:
+        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
+    import time
+    prof, _, busy = _WORKER_PROFILE
+    t = time.perf_counter()
+    prof.enable()
+    try:
+        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
+    finally:
+        prof.disable()
+        busy[0] += time.perf_counter() - t
 
 
 def transform_points(pcd, T):
