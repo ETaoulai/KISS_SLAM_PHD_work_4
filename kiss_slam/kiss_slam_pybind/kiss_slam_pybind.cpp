@@ -59,15 +59,15 @@ PYBIND11_MODULE(kiss_slam_pybind, m) {
         .def("_fix_variable", &PoseGraphOptimizer::fixVariable, "id"_a)
         .def("_add_factor", &PoseGraphOptimizer::addFactor, "id_source"_a, "id_target"_a, "T"_a,
              "omega"_a)
-        .def("_optimize", &PoseGraphOptimizer::optimize)
+        .def("_optimize", &PoseGraphOptimizer::optimize, py::call_guard<py::gil_scoped_release>())
         .def("_estimates", &PoseGraphOptimizer::estimates)
         .def("_read_graph", &PoseGraphOptimizer::readGraph, "filename"_a)
         .def("_write_graph", &PoseGraphOptimizer::writeGraph, "filename"_a);
 
     py::class_<VoxelMap> internal_map(m, "_VoxelMap", "Don't use this");
     internal_map.def(py::init<float>(), "voxel_size"_a)
-        .def("_integrate_frame", &VoxelMap::IntegrateFrame, "points"_a, "pose"_a)
-        .def("_add_points", &VoxelMap::AddPoints, "points"_a)
+        .def("_integrate_frame", &VoxelMap::IntegrateFrame, "points"_a, "pose"_a, py::call_guard<py::gil_scoped_release>())   // #189: GIL released
+        .def("_add_points", &VoxelMap::AddPoints, "points"_a, py::call_guard<py::gil_scoped_release>())
         .def("_point_cloud", &VoxelMap::Pointcloud)
         .def("_clear", &VoxelMap::Clear)
         .def("_num_voxels", &VoxelMap::NumVoxels)
