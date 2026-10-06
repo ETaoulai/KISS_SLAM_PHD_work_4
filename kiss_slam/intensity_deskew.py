@@ -151,11 +151,20 @@ def calibrated(img, P, valid, cos):
     return np.where(valid, out, np.nan)
 
 
+def ring_order(xyz, ring):
+    """(rings present, rings sorted top to bottom by mean elevation).  #174: one pass with bincount instead of a mask per ring
+    (Boreas, 128 rings x 220 000 points: 18 ms -> 1 ms); the same order."""
+    x, y = xyz[:, 0], xyz[:, 1]
+    elev = np.arctan2(xyz[:, 2], np.sqrt(x * x + y * y))
+    cnt = np.bincount(ring)
+    rings = np.flatnonzero(cnt)
+    mean = np.bincount(ring, weights=elev)[rings] / cnt[rings]
+    return rings, rings[np.argsort(-mean)]
+
+
 def grid(xyz, ts, inten, ring, with_cos=False):
     """Ring × azimuth grid: (raw intensity, 3D point, time, valid mask[, |cos incidence|])."""
-    elev = np.arctan2(xyz[:, 2], np.linalg.norm(xyz[:, :2], axis=1))
-    rings = np.unique(ring)
-    order = rings[np.argsort([-elev[ring == r].mean() for r in rings])]
+    rings, order = ring_order(xyz, ring)
     pos = np.empty(rings.max() + 1, dtype=np.int64); pos[order] = np.arange(len(order))
     row = pos[ring]
     col = ((np.arctan2(xyz[:, 1], xyz[:, 0]) + np.pi) / (2 * np.pi) * W).astype(int) % W
@@ -182,8 +191,7 @@ RENDER, RAY_MAX_GAP, RAY_EDGE_REL, DUAL_EPS = "splat", 1.5, 0.05, 0.05     # deg
 def raycast_grid(xyz, ts, inten, ring):
     """Ring × azimuth grid by casting a ray per pixel: (intensity, 3D point, time, valid mask)."""
     el_all = np.arctan2(xyz[:, 2], np.linalg.norm(xyz[:, :2], axis=1))
-    rings = np.unique(ring)
-    order = rings[np.argsort([-el_all[ring == r].mean() for r in rings])]
+    rings, order = ring_order(xyz, ring)
     H = len(order)
     img = np.full((H, W), np.nan); P = np.zeros((H, W, 3)); T = np.zeros((H, W)); valid = np.zeros((H, W), bool)
     azc = -180.0 + (np.arange(W) + 0.5) * 360.0 / W

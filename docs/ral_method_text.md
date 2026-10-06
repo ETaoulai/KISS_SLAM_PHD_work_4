@@ -71,13 +71,19 @@ moving sensor. *Effect* (row 8, #164): identical to row 7 on 30 of 43 sequences;
 
 ## Runtime
 
-Measured alone on one machine (48 cores; #165, #166) **with unrestricted thread pools**: a run uses about 10–13 cores (OpenBLAS / numpy,
-OpenCV — capped at 8 —, the KD-tree of the two-start check; KISS's ICP 4 threads) and 1.1–1.2 GB of memory on the handheld sequences, 2.4–2.7 GB on the car.
-The blend and the fallback add no measurable cost (christ-church-03 274 vs 287 s serial, 241 vs 241 s parallel; Boreas 764 vs 774 s serial, #166).
-Handheld, 10 Hz sensors: christ-church-03 (Hesai) 11.4 Hz serial, 12.9 Hz with `--parallel`; quad_easy (Ouster 128) 10.3 Hz with `--parallel` — real time.
-Car (Boreas, Velodyne 128): 3.9 Hz serial, 4.9 Hz parallel — not real time (the 1024 × 1024 panorama of 128 rings × 8 is the likely cost).
-The figures above are with the library defaults (no thread budget). A 4-thread-per-library budget was measured (#168: identical trajectories, 3–8 % slower, still
-6–11 cores) and then removed from the code (ΑΠΟΦΑΣΗ Μ.Τ. 5/10); the paper states the runtime as above, with the measured core count.
+Measured alone on one machine (48 cores; #166, #176, #177 on branch `speed_test`, speed fixes merged here — trajectories bit-identical to before),
+seed 0, `--parallel` (image motion in a second process, scans read by a background thread):
+
+| sequence (sensor, data length) | KISS-SLAM | ours (locked method) | ours / KISS |
+|---|---|---|---|
+| quad_easy (Ouster 128, 199 s) | 83 s · 2.4× real time | 179 s · 1.11× | 2.2× |
+| christ-church-03 (Hesai QT64, 312 s) | 66 s · 4.7× | 241 s · 1.29× (before the speed fixes) | 3.7× |
+| Boreas, 3000 scans (Velodyne 128, 300 s) | 237 s · 1.27× | 402 s · 0.75× | 1.7× |
+
+Both use 15–23 cores of the machine on average (KISS-ICP itself 4 threads; numpy / OpenBLAS, OpenCV and TBB pools by default) and 1.0–1.2 GB (handheld)
+or 2.7–2.8 GB (car). The blend and the fallback add no measurable cost (#166). Statement for the paper: 2–4× the cost of KISS-SLAM; real time on the handheld
+sensors, 0.75× real time on the 128-beam car. The speed fixes (#170 Boreas reader, #174 ring order of the panorama, #176 reader thread / reuse of the
+down-sampled scan) change no result.
 
 ## Limits (to state in the paper)
 
