@@ -253,7 +253,7 @@ class ImageDeskewConfig(BaseModel):
     panorama_width: Optional[Union[int, Literal["auto"]]] = None   # "auto" (#093): the sensor's own columns per revolution
     # Vertical upscaling of the panorama for the detector (#089).  None = 8 (every result before).  4 suits 128-beam sensors (0.7 deg per
     # ring: 8 over-samples 4x) - on underground_hard -26 % image time and -10 % rotation error.
-    panorama_up: Optional[Union[int, Literal["auto"]]] = None     # "auto" (#093): square pixels from the measured ring spacing
+    panorama_up: Optional[Union[int, Literal["auto", "saturate"]]] = None     # "auto" (#093): square pixels from the measured ring spacing
     # Image-motion fit (#093), all off by default: fit_sectors = equal total weight per azimuth sector in the time fit; whiten =
     # (sigma_r m, sigma_az rad, sigma_el rad), residuals in range / azimuth / elevation over their uncertainty, one robust loss per point;
     # cross_check = keep only mutual best matches.

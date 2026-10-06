@@ -591,8 +591,27 @@ AKAZE_THRESHOLD = 0.001                                    # #181: OpenCV defaul
 DETECT_SCALE = 1.0
 
 
+KP_GRID = None    # #199: (cell px, n) - keep at most the n strongest keypoints per cell x cell block of the panorama (even spread); None = all
+
+
+def _grid_filter(kps, desc):
+    cell, n = KP_GRID
+    if not kps:
+        return kps, desc
+    key = np.array([(int(k.pt[1] // cell), int(k.pt[0] // cell)) for k in kps])
+    resp = np.array([k.response for k in kps])
+    order = np.lexsort((-resp, key[:, 1], key[:, 0]))                   # by cell, strongest first
+    k_sorted = key[order]
+    first = np.r_[True, (k_sorted[1:] != k_sorted[:-1]).any(1)]
+    rank = np.arange(len(order)) - np.maximum.accumulate(np.where(first, np.arange(len(order)), 0))
+    keep = np.sort(order[rank < n])                                     # original order kept
+    return tuple(kps[i] for i in keep), desc[keep]
+
+
 def _detect(detector, img):
     kps, desc = _detect_raw(detector, img)
+    if KP_GRID is not None and desc is not None:
+        kps, desc = _grid_filter(kps, desc)
     if desc is not None and desc.dtype == np.uint8 and desc.shape[1] % 8:   # #181: AKAZE M-LDB is 61 bytes; zero bytes added to a multiple
         desc = np.pad(desc, ((0, 0), (0, -desc.shape[1] % 8)))              # of 8 for the C++ Hamming matcher - the distances do not change
     return kps, desc
@@ -627,6 +646,29 @@ def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
         big = _clahe[0].apply(big)
     kps, desc = _detect(detector, big)
     return P, T, valid, kps, desc, ts[ok].min(), big
+
+
+SATURATE_ROWS, SATURATE_FRAC = (128, 256, 512, 1024), 0.95
+
+
+def saturate_upscale(xyz, ts, inten, ring, detector):
+    """#198: the vertical upscaling where the detector's keypoints saturate - the smallest panorama height (of SATURATE_ROWS) with at least
+    SATURATE_FRAC of the largest keypoint count, measured on this (first) scan.  #195: keypoints grow with the rows and saturate (~256 rows at
+    16 beams, ~512 at 64); fewer than ~128 rows breaks the matching.  Sensor-independent: no constant per sensor."""
+    global UP
+    saved, nr = UP, len(np.unique(ring))
+    counts = {}
+    try:
+        for rows in SATURATE_ROWS:
+            UP = rows / nr
+            kps, _ = _detect(detector, panorama(xyz, ts, inten, ring)[0])
+            counts[rows] = len(kps)
+    finally:
+        UP = saved
+    top = max(counts.values())
+    rows = min(r for r, c in counts.items() if c >= SATURATE_FRAC * top)
+    saturate_upscale.last = counts
+    return rows / nr
 
 
 def range_features(xyz, ts, ring, detector, _clahe=[]):
@@ -953,7 +995,8 @@ class ScanMotionEstimator:
         if panorama_width is not None and not self.auto_width:
             global W
             W = int(panorama_width)
-        self.auto_up = panorama_up == "auto"         # #093: square pixels, measured from the first scan
+        self.auto_up = panorama_up in ("auto", "saturate")   # #093: square pixels / #198: feature saturation, measured from the first scan
+        self.up_mode = panorama_up
         self.panorama_up = None if self.auto_up else panorama_up
         if panorama_up is not None and not self.auto_up:   # #089: vertical upscaling of the panorama (8 = every result before; 4 for 128 beams)
             global UP
@@ -1010,8 +1053,14 @@ class ScanMotionEstimator:
             print(f"ScanMotionEstimator| panorama columns auto (sensor's own): {W}", flush=True)
         if self.auto_up and self.panorama_up is None:          # #093: first scan - set the upscaling once, for the whole run
             global UP
-            UP = self.panorama_up = square_upscale(xyz, ring)
-            print(f"ScanMotionEstimator| panorama upscaling auto (square pixels): {UP:.4f} ({round(UP * len(np.unique(ring)))} rows)", flush=True)
+            if self.up_mode == "saturate":
+                inten_s = inten * self.intensity_scale if (self.intensity_scale != 1.0 and self.intensity_normalisation == "none") else inten
+                UP = self.panorama_up = saturate_upscale(xyz, ts, inten_s, ring, self.detector)
+                print(f"ScanMotionEstimator| panorama upscaling saturate: {UP:g} ({round(UP * len(np.unique(ring)))} rows; "
+                      f"keypoints per height {saturate_upscale.last}", flush=True)
+            else:
+                UP = self.panorama_up = square_upscale(xyz, ring)
+                print(f"ScanMotionEstimator| panorama upscaling auto (square pixels): {UP:.4f} ({round(UP * len(np.unique(ring)))} rows)", flush=True)
         self.last_reason = None
         if self.intensity_scale != 1.0 and self.intensity_normalisation == "none":
             inten = inten * self.intensity_scale

@@ -130,6 +130,10 @@ def main():
             config.image_deskew.fit_sectors_part = opts.get("sectors-part", "both")   # #135
         if "whiten" in opts:                                     # #093: range / azimuth / elevation whitening, one loss per point
             config.image_deskew.whiten = [float(v) for v in opts["whiten"].split(",")]
+        if "kp-grid" in opts:                                    # #199: at most N strongest keypoints per CELL x CELL px block
+            import kiss_slam.intensity_deskew as _idsk_grid
+            c_, n_ = opts["kp-grid"].split(",")
+            _idsk_grid.KP_GRID = (int(c_), int(n_))
         if "detect-scale" in opts:                               # #093: panorama scale for the detector only (speed)
             config.image_deskew.detect_scale = float(opts["detect-scale"])
         if "--cross-check" in sys.argv:                          # #093: mutual best matches only
@@ -159,7 +163,7 @@ def main():
             config.image_deskew.intensity_normalisation = opts["normalise"]
         if "panorama-up" in opts:                                # vertical upscaling of the panorama, e.g. 4 for 128 beams (#089)
             v = opts["panorama-up"]                              # "auto" (#093): square pixels from the first scan's ring spacing
-            config.image_deskew.panorama_up = v if v == "auto" else int(v)
+            config.image_deskew.panorama_up = v if v in ("auto", "saturate") else int(v)   # "saturate": #198
         if "panorama-width" in opts:                             # panorama columns, e.g. 2048 for the Hilti Ouster (#075)
             v = opts["panorama-width"]                           # "auto" (#093): the sensor's own columns, from the first scan
             config.image_deskew.panorama_width = v if v == "auto" else int(v)

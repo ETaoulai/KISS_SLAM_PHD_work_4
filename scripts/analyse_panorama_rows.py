@@ -66,8 +66,22 @@ def main():
         r = dict(kp=len(cur[3]), matches=len(good), inliers=int(nin), failed=M is None)
         pairs = getattr(d.match_motion, "last_pairs", None)
         if pairs is not None and M is not None:
-            az = np.arctan2(pairs[2][:, 1], pairs[2][:, 0])
+            q = pairs[2]
+            az = np.arctan2(q[:, 1], q[:, 0])
             r["sectors"] = int(len(np.unique(np.floor((az + np.pi) / (2 * np.pi) * 8).astype(int) % 8)))
+            rng = np.linalg.norm(q, axis=1)                                  # #196: where the inliers are
+            el = np.degrees(np.arctan2(q[:, 2], np.linalg.norm(q[:, :2], axis=1)))
+            r.update(inl_range_med=float(np.median(rng)), inl_near5=float(np.mean(rng < 5)), inl_far20=float(np.mean(rng > 20)),
+                     inl_below10=float(np.mean(el < -10)), inl_el_iqr=float(np.subtract(*np.percentile(el, [75, 25]))))
+            if gt is not None:                                               # each inlier pair's residual under the GT motion
+                t0 = est.last_t_start
+                if gt_t[0] <= t0 and t0 + est.period <= gt_t[1]:
+                    p_, tp_, q_, tq_ = pairs
+                    Rp = gt(t0 + tp_ * est.period); Rq = gt(t0 + tq_ * est.period); R0 = gt([t0])[0]
+                    # rotation-only check (no GT translation in the lidar frame here): angle between the bearings after the GT rotation
+                    bp = (R0.inv() * Rp).apply(p_); bq = (R0.inv() * Rq).apply(q_)
+                    cosang = np.sum(bp * bq, 1) / (np.linalg.norm(bp, axis=1) * np.linalg.norm(bq, axis=1))
+                    r["inl_bearing_err_deg"] = float(np.median(np.degrees(np.arccos(np.clip(cosang, -1, 1)))))
         if gt is not None and M is not None:
             t0 = est.last_t_start
             t1 = t0 + est.period
@@ -83,6 +97,10 @@ def main():
                 inliers=float(np.median([r["inliers"] for r in ok])) if ok else 0.0,
                 inlier_ratio=float(np.median([r["inliers"] / max(r["matches"], 1) for r in ok])) if ok else 0.0,
                 sectors=float(np.median([r.get("sectors", 0) for r in ok])) if ok else 0.0)
+    for k in ("inl_range_med", "inl_near5", "inl_far20", "inl_below10", "inl_el_iqr", "inl_bearing_err_deg"):
+        v = [r[k] for r in ok if k in r]
+        if v:
+            summ[k] = float(np.median(v))
     errs = [r["rot_err_deg"] for r in ok if "rot_err_deg" in r]
     if errs:
         summ.update(rot_err_median=float(np.median(errs)), rot_err_p90=float(np.percentile(errs, 90)))
