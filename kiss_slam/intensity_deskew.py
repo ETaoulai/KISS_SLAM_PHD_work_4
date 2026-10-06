@@ -169,8 +169,11 @@ def grid(xyz, ts, inten, ring, with_cos=False):
     row = pos[ring]
     col = ((np.arctan2(xyz[:, 1], xyz[:, 0]) + np.pi) / (2 * np.pi) * W).astype(int) % W
     H = len(rings)
-    img = np.full((H, W), np.nan); P = np.zeros((H, W, 3)); T = np.zeros((H, W)); valid = np.zeros((H, W), bool)
-    img[row, col] = inten; P[row, col] = xyz; T[row, col] = ts; valid[row, col] = True
+    if _fit_cpp is not None and IMAGE_CPP != "off":            # #182: the same assignments in C++ (bit-identical)
+        img, P, T, valid = _fit_cpp.grid_scatter(row, col, inten, xyz, ts, H, W)
+    else:
+        img = np.full((H, W), np.nan); P = np.zeros((H, W, 3)); T = np.zeros((H, W)); valid = np.zeros((H, W), bool)
+        img[row, col] = inten; P[row, col] = xyz; T[row, col] = ts; valid[row, col] = True
     if not with_cos:
         return img, P, T, valid
     C = np.full((H, W), np.nan); C[row, col] = incidence_cos(xyz)
@@ -365,10 +368,15 @@ def ransac(A, B, rng):
         while done < min(needed, RANSAC_IT):
             k = min(RANSAC_BATCH, RANSAC_IT - done)
             idx = np.argpartition(rng.random((k, len(A))), 3, axis=1)[:, :3]   # 3 distinct points per hypothesis
-            inl = inliers_batch(A, B, kabsch_batch(A[idx], B[idx]))
-            j = int(np.argmax(inl.sum(1)))                                    # first of the best, as the loop
-            if best is None or inl[j].sum() > best.sum():
-                best = inl[j]
+            if _fit_cpp is not None and IMAGE_CPP == "all" and INLIER_TEST == "metric":   # #182: the hypotheses in C++
+                j, cnt, inl_j = _fit_cpp.ransac_batch(A, B, idx, RANSAC_THR)
+                if best is None or cnt > best.sum():
+                    best = inl_j
+            else:
+                inl = inliers_batch(A, B, kabsch_batch(A[idx], B[idx]))
+                j = int(np.argmax(inl.sum(1)))                                    # first of the best, as the loop
+                if best is None or inl[j].sum() > best.sum():
+                    best = inl[j]
             done += k
             w = best.sum() / len(A)
             needed = 1 if w >= 1 else (np.inf if w == 0 else np.log(1 - RANSAC_CONF) / np.log(1 - w ** 3))
@@ -522,7 +530,9 @@ def fit_time(p, tp, q, tq, M0, model="cv"):
             x = np.concatenate([x, np.zeros(extra)])    # start from the constant-velocity solution
         for _ in range(3):
             A = _fit_weights(q[keep])
-            if A is None:
+            if A is None and _fit_cpp is not None and IMAGE_CPP == "all" and FIT_JAC == "analytic":   # #182: the same cost in C++
+                x = _fit_cpp.fit_soft_l1(x, p[keep], tp[keep], q[keep], tq[keep], 0.05)
+            elif A is None:
                 x = least_squares(residual, x, args=(p[keep], tp[keep], q[keep], tq[keep]),
                                   jac=residual_jac if FIT_JAC == "analytic" else "2-point",
                                   loss="soft_l1", f_scale=0.05).x
@@ -640,6 +650,13 @@ try:                                                              # #087: C++ gu
     from kiss_slam import _guided_match as _guided_cpp
 except ImportError:
     _guided_cpp = None
+
+try:                                                              # #182: C++ RANSAC hypotheses, soft_l1 time fit, panorama scatter, if built
+    from kiss_slam import _image_fit as _fit_cpp
+except ImportError:
+    _fit_cpp = None
+# #182: use them (scripts/build_image_fit.sh).  "all" = the three; "exact" = only the bit-identical one (panorama scatter); "off" = Python.
+IMAGE_CPP = __import__("os").environ.get("KISS_IMAGE_CPP", "off")   # #182: env, so a whole run (and its worker) can switch
 
 
 def predict_pixels(f1, f2, M):
