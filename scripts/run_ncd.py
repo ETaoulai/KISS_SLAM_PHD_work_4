@@ -130,6 +130,8 @@ def main():
             config.image_deskew.fit_sectors_part = opts.get("sectors-part", "both")   # #135
         if "whiten" in opts:                                     # #093: range / azimuth / elevation whitening, one loss per point
             config.image_deskew.whiten = [float(v) for v in opts["whiten"].split(",")]
+        if "--cv-blend-inliers" in sys.argv:                    # #200: blend weight also from this scan's inlier count
+            config.image_deskew.cv_blend_inliers = True
         if "kp-grid" in opts:                                    # #199: at most N strongest keypoints per CELL x CELL px block
             import kiss_slam.intensity_deskew as _idsk_grid
             c_, n_ = opts["kp-grid"].split(",")

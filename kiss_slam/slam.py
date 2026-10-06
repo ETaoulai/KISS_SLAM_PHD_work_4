@@ -73,13 +73,13 @@ _WORKER_PROFILE = None
 
 def _motion_worker(frame, timestamps, intensity, ring):
     if _WORKER_PROFILE is None:
-        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
+        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)   # (M, inliers) - #200: the count for the blend
     import time
     prof, _, busy = _WORKER_PROFILE
     t = time.perf_counter()
     prof.enable()
     try:
-        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
+        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)   # (M, inliers) - #200: the count for the blend
     finally:
         prof.disable()
         busy[0] += time.perf_counter() - t
@@ -508,6 +508,7 @@ class KissSLAM:
         self._frame_counter = 0
         self._blend_pending = None          # #131: (scan, image motion as measured, constant-velocity prediction) of the last blended scan
         self._blend_errors = []             # #131: (image, constant-velocity) rotation errors against the ICP, deg
+        self._blend_inl_hist = []           # #200: inlier counts of the image motions (cv_blend_inliers)
         self.blend_weights = []
         self._prev_pose = np.eye(4)
 
@@ -774,11 +775,12 @@ class KissSLAM:
             if self._motion_pool is not None:
                 if not self._motion_futures:        # the caller did not prefetch: submit now and wait
                     self.submit_image_motion(frame, timestamps, intensity, ring)
-                M = self._motion_futures.popleft().result()
+                M, n_inl = self._motion_futures.popleft().result()
             else:
                 M, n_inl = self._image_motion_est.motion(frame, timestamps, intensity, ring)
                 # Diagnostic record (#086): the image motion of every scan as estimated, and its RANSAC inliers.
                 self.image_motion_log.append((self._frame_counter, np.nan if M is None else np.asarray(M, float), n_inl))
+            self._cur_inliers = n_inl                     # #200
         if M is None:                         # failed, or rejected by the plausibility gate (#054)
             self.n_image_motion_failures += 1
             return None
@@ -834,6 +836,12 @@ class KissSLAM:
             return M
         e = np.asarray(self._blend_errors)
         vi, vc = np.mean(e[:, 0] ** 2) + 1e-9, np.mean(e[:, 1] ** 2) + 1e-9
+        n = getattr(self, "_cur_inliers", None)
+        if self.image_cfg.cv_blend_inliers and n:              # #200: this scan's image error variance ~ 1 / its inliers (vs the recent median)
+            hist = self._blend_inl_hist
+            if len(hist) >= 20:
+                vi = vi * float(np.median(hist[-100:])) / max(n, 1)
+            hist.append(n)
         w = vc / (vi + vc)
         self.blend_weights.append(w)
         B = np.eye(4)

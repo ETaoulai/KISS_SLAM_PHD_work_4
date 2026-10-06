@@ -192,6 +192,7 @@ class ImageDeskewConfig(BaseModel):
     # slerp, translation linear, for BOTH uses of the image motion.  "off" = the image motion as measured (every result before #131).
     cv_blend: Literal["off", "adaptive"] = "adaptive"   # RA-L method (5/10, #164): on
     cv_blend_window: int = 20
+    cv_blend_inliers: bool = False   # #200: scale the image's error variance of THIS scan by median(recent inliers) / its inliers
     # #137 (diagnosis of the drone loss, #133 / #134): cv_blend_part "rotation" = blend the rotation only, keep the image translation;
     # cv_blend_use "deskew" = the blend only for the deskew, the ICP start stays the image motion as measured.  Defaults = #131.
     cv_blend_part: Literal["full", "rotation"] = "full"
