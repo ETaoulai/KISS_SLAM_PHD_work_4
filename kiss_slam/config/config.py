@@ -138,7 +138,7 @@ class ImageDeskewConfig(BaseModel):
     # SURF needs OpenCV built with contrib + OPENCV_ENABLE_NONFREE=ON (not in the pip wheels).
     # surf_hessian_threshold: higher = fewer, stronger keypoints (OpenCV default 100).
     # surf_upright: no keypoint orientation (U-SURF); the panorama is never rotated in-plane.
-    detector: Literal["sift", "surf", "orb"] = "surf"   # "orb" since #088 · RA-L method (5/10): SURF
+    detector: Literal["sift", "surf", "orb", "akaze"] = "surf"   # "orb" since #088 · RA-L method (5/10): SURF
     # Multiplies the raw intensity before the panorama, which clips at 255 (built for the Hesai
     # 0-255 scale).  1.0 = Hesai.  Ouster (0 to ~1100, median 150-450): 255/1024 = 0.249 (#041).
     intensity_scale: float = 1.0

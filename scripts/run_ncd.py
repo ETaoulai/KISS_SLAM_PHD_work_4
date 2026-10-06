@@ -51,8 +51,8 @@ def main():
     opts = dict(a[2:].split("=", 1) for a in sys.argv[1:] if a.startswith("--") and "=" in a)
     arm, seq, out = args[0], Path(args[1]), Path(args[2])
     n_scans = int(args[3]) if len(args) > 3 else -1
-    if arm not in ("kiss", "sift", "surf"):
-        sys.exit(f"arm must be kiss, sift or surf, not {arm!r}")
+    if arm not in ("kiss", "sift", "surf", "orb", "akaze"):
+        sys.exit(f"arm must be kiss, sift, surf, orb or akaze, not {arm!r}")
     os.environ["KISS_SLAM_OUT_DIR"] = str(out)          # read when the config is built
 
     import kiss_slam.pipeline as pipeline

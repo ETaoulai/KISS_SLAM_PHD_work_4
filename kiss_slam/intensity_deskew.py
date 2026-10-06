@@ -567,7 +567,13 @@ def make_detector(detector="sift", surf_hessian=100.0, surf_upright=False):
             ) from e
     if detector == "orb":                                  # #088: binary descriptors, Hamming matching; many keypoints, small border / patch
         return cv2.ORB_create(nfeatures=ORB_FEATURES, scaleFactor=1.2, nlevels=8, edgeThreshold=15, patchSize=15, fastThreshold=10)
-    raise ValueError(f"unknown detector {detector!r}: 'sift', 'surf' or 'orb'")
+    if detector == "akaze":                                # #181: upright AKAZE (M-LDB binary descriptor without orientation), Hamming matching
+        x = cv2.xfeatures2d if hasattr(cv2, "xfeatures2d") and hasattr(cv2.xfeatures2d, "AKAZE_create") else cv2   # OpenCV 5: in contrib
+        return x.AKAZE_create(descriptor_type=x.AKAZE_DESCRIPTOR_MLDB_UPRIGHT, threshold=AKAZE_THRESHOLD)
+    raise ValueError(f"unknown detector {detector!r}: 'sift', 'surf', 'orb' or 'akaze'")
+
+
+AKAZE_THRESHOLD = 0.001                                    # #181: OpenCV default detector response threshold
 
 
 # #093: scale of the panorama for the detector only (1 = every result before).  < 1: the image is shrunk before SURF / SIFT (cost ~ area)
@@ -946,7 +952,8 @@ class ScanMotionEstimator:
         self.stuck_min, self.floor_only, self.elev, self.range_ = stuck_min, floor_only, elev, range_
         self.detector_name = detector
         self.detector = make_detector(detector, surf_hessian, surf_upright)
-        self.bf = cv2.BFMatcher(cv2.NORM_HAMMING if detector == "orb" else cv2.NORM_L2)   # #088: ORB is binary
+        self.bf = cv2.BFMatcher(cv2.NORM_HAMMING if detector in ("orb", "akaze") else cv2.NORM_L2)   # #088 / #181: ORB, AKAZE binary
+        self.range_bf = cv2.BFMatcher(cv2.NORM_L2)          # #181: the range panorama always uses SURF (float descriptors)
         self.rng = np.random.default_rng(seed)
         self.prev = None
         self.last_motion = None
@@ -1055,7 +1062,7 @@ class ScanMotionEstimator:
                 prev_r, self.prev_range_feat = self.prev_range_feat, cur_r
                 if prev_r is not None and getattr(self, "_fuse_now", True):   # #152: "weak" = only on low-match scans (features cached every scan)
                     GUIDED_PREDICTION, GUIDED_PRED_MOTION = "motion", M1
-                    _, Mr, _ = match_motion(prev_r, cur_r, self.period, self.range_rng, self.bf, self.model, self.subpixel,
+                    _, Mr, _ = match_motion(prev_r, cur_r, self.period, self.range_rng, self.range_bf, self.model, self.subpixel,
                                             self.stuck_min, self.floor_only, self.elev, self.range_)
                     if Mr is not None and match_motion.last_pairs is not None:
                         sets.append(match_motion.last_pairs)
@@ -1089,7 +1096,7 @@ class ScanMotionEstimator:
                 return M, n
             prev_r = range_features(*prev_raw, self.range_detector)
             cur_r = range_features(xyz, ts, ring, self.range_detector)
-            _, Mr, nr = match_motion(prev_r, cur_r, self.period, self.range_rng, self.bf, self.model, self.subpixel,
+            _, Mr, nr = match_motion(prev_r, cur_r, self.period, self.range_rng, self.range_bf, self.model, self.subpixel,
                                      self.stuck_min, self.floor_only, self.elev, self.range_)
             self.last_range_motion = Mr
             if Mr is not None:
@@ -1100,7 +1107,7 @@ class ScanMotionEstimator:
         prev_r, self.prev_range = self.prev_range, cur_r
         self.last_range_motion = None
         if prev_r is not None:
-            _, Mr, nr = match_motion(prev_r, cur_r, self.period, self.range_rng, self.bf, self.model, self.subpixel,
+            _, Mr, nr = match_motion(prev_r, cur_r, self.period, self.range_rng, self.range_bf, self.model, self.subpixel,
                                      self.stuck_min, self.floor_only, self.elev, self.range_)
             self.last_range_motion = Mr
             if self.range_motion in ("fallback", "validate") and M is None and Mr is not None:   # #109 validate: eager + fallback
