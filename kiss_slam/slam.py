@@ -97,11 +97,25 @@ def _motion_worker(frame, timestamps, intensity, ring, packed=None):
     return _profiled(lambda: _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring, feats=feats)[0])
 
 
-def _feature_worker(frame, timestamps, intensity, ring):
-    """#180: panorama + keypoints / descriptors of one scan - depends only on the scan, so it runs ahead of the matching."""
-    import kiss_slam.intensity_deskew as idsk
+_STAGE = {}                 # #180 (worker): scan key -> (future of its features, raw scan)
+_STAGE_POOL = None
 
-    return _profiled(lambda: idsk.pack_features(_WORKER_ESTIMATOR.scan_features(frame, timestamps, intensity, ring)))
+
+def _start_features(key, frame, timestamps, intensity, ring):
+    """#180 (worker): start the features of a scan in a thread and return at once; `_motion_from` collects them."""
+    global _STAGE_POOL
+    if _STAGE_POOL is None:
+        from concurrent.futures import ThreadPoolExecutor
+        _STAGE_POOL = ThreadPoolExecutor(max_workers=1)
+    fut = _STAGE_POOL.submit(_profiled, lambda: _WORKER_ESTIMATOR.scan_features(frame, timestamps, intensity, ring))
+    _STAGE[key] = (fut, (frame, timestamps, intensity, ring))
+
+
+def _motion_from(key):
+    """#180 (worker): the motion of a scan whose features were started by `_start_features`."""
+    fut, raw = _STAGE.pop(key)
+    feats = fut.result()
+    return _profiled(lambda: _WORKER_ESTIMATOR.motion(*raw, feats=feats)[0])
 
 
 def transform_points(pcd, T):
@@ -397,7 +411,9 @@ class KissSLAM:
             )
         self._image_motion_est = None      # online estimator
         self._motion_pool = None           # image_deskew.parallel: worker process running the estimator
-        self._feature_pool = None          # #180: second worker, the features of each scan ahead of the matching
+        self._staged = False               # #180: features of the next scan in a thread of the worker
+        self._stage_key = 0
+        self._stage_pending = None
         self._motion_futures = deque()     # motions submitted to it, oldest first
         self._rotvec_history = []          # image_deskew.rotation_smoothing (#047)
         self._validate_hist = []           # #109: image vs range rotation differences (running median)
@@ -482,23 +498,12 @@ class KissSLAM:
                         initializer=_motion_worker_init,
                         initargs=(estimator_kwargs, knobs),
                     )
-                    # #180: two stages - the features of each scan (panorama + detector, which depend only on the scan) in a second
-                    # worker, ahead of the matching; the same computations in the same order, so the same motions.  Not with the
-                    # "auto" panorama (its size is measured from the first scan inside the matching worker) or KISS_IMAGE_STAGES=1.
-                    if (self.image_cfg.panorama_width != "auto" and self.image_cfg.panorama_up != "auto"
-                            and os.environ.get("KISS_IMAGE_STAGES", "2") != "1"):
-                        import queue
-                        import threading
-
-                        self._feature_pool = ProcessPoolExecutor(
-                            max_workers=1,
-                            mp_context=multiprocessing.get_context("spawn"),
-                            initializer=_motion_worker_init,
-                            initargs=(estimator_kwargs, knobs, "features"),
-                        )
-                        self._forward_q = queue.Queue()
-                        self._forwarder = threading.Thread(target=self._forward_features, daemon=True)
-                        self._forwarder.start()
+                    # #180: two stages in the worker - the features of scan k+1 (panorama + detector, which depend only on the scan) are
+                    # computed by a thread of the worker while it matches scan k; the scan is sent once, as before.  The same computations
+                    # in the same order, so the same motions.  Not with the "auto" panorama (sized from the first scan inside the
+                    # matching) or with KISS_IMAGE_STAGES=1.
+                    self._staged = (self.image_cfg.panorama_width != "auto" and self.image_cfg.panorama_up != "auto"
+                                    and os.environ.get("KISS_IMAGE_STAGES", "2") != "1")
                 else:
                     self._image_motion_est = ScanMotionEstimator(**estimator_kwargs)
 
@@ -809,8 +814,11 @@ class KissSLAM:
                     "(SlamPipeline does this) or set image_deskew.motion_file."
                 )
             if self._motion_pool is not None:
+                if not self._motion_futures:
+                    self._collect_pending_motion()   # #180: the matching of the last submitted scan
                 if not self._motion_futures:        # the caller did not prefetch: submit now and wait
                     self.submit_image_motion(frame, timestamps, intensity, ring)
+                    self._collect_pending_motion()
                 M = self._motion_futures.popleft().result()
             else:
                 M, n_inl = self._image_motion_est.motion(frame, timestamps, intensity, ring)
@@ -892,44 +900,29 @@ class KissSLAM:
         order, so the estimator sees the same sequence as the serial one).
         """
         args = (frame, timestamps, intensity, ring)
-        if self._feature_pool is None:
+        if not self._staged:
             self._motion_futures.append(self._motion_pool.submit(_motion_worker, *args))
             return
-        from concurrent.futures import Future                    # #180: features now, matching when they are ready (in order)
+        # #180: start this scan's features now; the matching of the PREVIOUS submitted scan is queued after it, so in the worker the
+        # features of scan k+1 (thread) run while scan k is matched.  Futures stay in scan order.
+        key, self._stage_key = self._stage_key, self._stage_key + 1
+        self._motion_pool.submit(_start_features, key, *args)
+        if self._stage_pending is not None:
+            self._motion_futures.append(self._motion_pool.submit(_motion_from, self._stage_pending))
+        self._stage_pending = key
 
-        proxy = Future()
-        self._forward_q.put((self._feature_pool.submit(_feature_worker, *args), args, proxy))
-        self._motion_futures.append(proxy)
-
-    def _forward_features(self):
-        """#180: passes each scan's features to the matching worker in submission order (one thread, so the order is kept)."""
-        while True:
-            item = self._forward_q.get()
-            if item is None:
-                return
-            ff, args, proxy = item
-            try:
-                packed = ff.result()
-                mf = self._motion_pool.submit(_motion_worker, *args, packed)
-            except BaseException as e:
-                proxy.set_exception(e)
-                continue
-
-            def done(m, proxy=proxy):
-                e = m.exception()
-                proxy.set_exception(e) if e is not None else proxy.set_result(m.result())
-            mf.add_done_callback(done)
+    def _collect_pending_motion(self):
+        """#180: the last submitted scan's matching, when no later scan was submitted (end of the sequence, or no prefetch)."""
+        if self._staged and self._stage_pending is not None:
+            self._motion_futures.append(self._motion_pool.submit(_motion_from, self._stage_pending))
+            self._stage_pending = None
 
     def close_image_motion(self):
-        if self._feature_pool is not None:
-            self._forward_q.put(None)
-            self._forwarder.join()
-            self._feature_pool.shutdown(cancel_futures=True)
-            self._feature_pool = None
         if self._motion_pool is not None:
             self._motion_pool.shutdown(cancel_futures=True)
             self._motion_pool = None
             self._motion_futures.clear()
+            self._stage_pending = None
 
     def _register_frame_image_motion(self, frame, timestamps, intensity, ring):
         """KissICP.register_frame (kiss_icp 1.3.0) with the image motion in place of last_delta.
