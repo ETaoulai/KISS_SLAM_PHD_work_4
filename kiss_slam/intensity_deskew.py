@@ -606,6 +606,20 @@ def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
     return P, T, valid, kps, desc, ts[ok].min(), big
 
 
+def pack_features(f):
+    """#180: `features` output in a picklable form (cv2.KeyPoint cannot be pickled): keypoints as an (N, 7) array of their fields."""
+    P, T, valid, kps, desc, t0, big = f
+    kp = np.array([(k.pt[0], k.pt[1], k.size, k.angle, k.response, k.octave, k.class_id) for k in kps], dtype=np.float64).reshape(-1, 7)
+    return P, T, valid, kp, desc, t0, big
+
+
+def unpack_features(g):
+    """#180: inverse of `pack_features` - the same keypoints (float32 fields, exact through float64)."""
+    P, T, valid, kp, desc, t0, big = g
+    kps = tuple(cv2.KeyPoint(float(x), float(y), float(sz), float(a), float(r), int(o), int(c)) for x, y, sz, a, r, o, c in kp)
+    return P, T, valid, kps, desc, t0, big
+
+
 def range_features(xyz, ts, ring, detector, _clahe=[]):
     """Like `features`, but the panorama is log range (1-60 m -> 0-255) with local contrast (CLAHE 4x16) instead of
     intensity (#057-#058): where intensity repeats (rows of identical windows) the depth structure does not."""
@@ -971,7 +985,13 @@ class ScanMotionEstimator:
         self.last_range_motion = None
         self.n_range_used = 0
 
-    def motion(self, xyz, ts, inten, ring):
+    def scan_features(self, xyz, ts, inten, ring):
+        """The part of `motion` that depends only on this scan (#180: can run in its own process, ahead of the matching)."""
+        if self.intensity_scale != 1.0 and self.intensity_normalisation == "none":
+            inten = inten * self.intensity_scale
+        return features(xyz, ts, inten, ring, self.detector, self.intensity_normalisation)
+
+    def motion(self, xyz, ts, inten, ring, feats=None):
         self.k += 1
         if self.k == 0 and self.auto_width:                   # #093: first scan - the columns, then the upscaling (it depends on them)
             global W
@@ -982,9 +1002,7 @@ class ScanMotionEstimator:
             UP = self.panorama_up = square_upscale(xyz, ring)
             print(f"ScanMotionEstimator| panorama upscaling auto (square pixels): {UP:.4f} ({round(UP * len(np.unique(ring)))} rows)", flush=True)
         self.last_reason = None
-        if self.intensity_scale != 1.0 and self.intensity_normalisation == "none":
-            inten = inten * self.intensity_scale
-        cur = features(xyz, ts, inten, ring, self.detector, self.intensity_normalisation)
+        cur = feats if feats is not None else self.scan_features(xyz, ts, inten, ring)   # #180: precomputed by the features stage
         prev, self.prev = self.prev, cur
         self.last_params, self.last_t_start = None, cur[5]
         if prev is None:
@@ -1084,11 +1102,13 @@ class ScanMotionEstimator:
         differ from the eager version as another seed would.  "candidate" needs the range motion on every scan: eager."""
         if self.range_motion == "fallback":
             prev_raw, self.prev_raw = self.prev_raw, (xyz, ts, ring)
+            cached, self._range_cache = getattr(self, "_range_cache", None), None   # #180: range features of the previous scan, if built
             self.last_range_motion = None
             if M is not None or prev_raw is None:
                 return M, n
-            prev_r = range_features(*prev_raw, self.range_detector)
+            prev_r = cached if cached is not None else range_features(*prev_raw, self.range_detector)   # the same features (deterministic)
             cur_r = range_features(xyz, ts, ring, self.range_detector)
+            self._range_cache = cur_r
             _, Mr, nr = match_motion(prev_r, cur_r, self.period, self.range_rng, self.bf, self.model, self.subpixel,
                                      self.stuck_min, self.floor_only, self.elev, self.range_)
             self.last_range_motion = Mr
