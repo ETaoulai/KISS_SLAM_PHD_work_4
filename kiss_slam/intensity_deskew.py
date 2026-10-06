@@ -1164,11 +1164,13 @@ class ScanMotionEstimator:
         differ from the eager version as another seed would.  "candidate" needs the range motion on every scan: eager."""
         if self.range_motion == "fallback":
             prev_raw, self.prev_raw = self.prev_raw, (xyz, ts, ring)
+            cached, self._range_cache = getattr(self, "_range_cache", None), None   # #201: range features of the previous scan, if built
             self.last_range_motion = None
             if M is not None or prev_raw is None:
                 return M, n
-            prev_r = range_features(*prev_raw, self.range_detector)
+            prev_r = cached if cached is not None else range_features(*prev_raw, self.range_detector)   # the same features (deterministic)
             cur_r = range_features(xyz, ts, ring, self.range_detector)
+            self._range_cache = cur_r
             _, Mr, nr = match_motion(prev_r, cur_r, self.period, self.range_rng, self.range_bf, self.model, self.subpixel,
                                      self.stuck_min, self.floor_only, self.elev, self.range_)
             self.last_range_motion = Mr
