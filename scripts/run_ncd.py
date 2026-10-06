@@ -71,6 +71,9 @@ def main():
             dataset = LivoxRosbag(seq, topic)
         else:
             dataset = RosbagDataset(seq, topic)
+    elif (seq / "Ouster").is_dir() and (seq / "global_pose.csv").exists():   # MulRan sequence (#208)
+        from kiss_slam.tools.mulran import MulRan
+        dataset = MulRan(seq, int(opts.get("first", 0)), int(opts["last"]) if "last" in opts else None)
     elif (seq / "lidar").is_dir() and (seq / "applanix").is_dir():   # Boreas sequence (#085)
         from kiss_slam.tools.boreas import Boreas
         dataset = Boreas(seq, int(opts.get("first", 0)), int(opts["last"]) if "last" in opts else None)
