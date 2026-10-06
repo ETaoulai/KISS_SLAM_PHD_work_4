@@ -22,8 +22,6 @@
 # SOFTWARE.
 from collections import deque
 
-import os
-
 import numpy as np
 import open3d as o3d
 from kiss_icp.kiss_icp import KissICP
@@ -45,7 +43,7 @@ from kiss_slam.voxel_map import VoxelMap
 _WORKER_ESTIMATOR = None
 
 
-def _motion_worker_init(estimator_kwargs, module_knobs, role="motion"):
+def _motion_worker_init(estimator_kwargs, module_knobs):
     """Runs once in the worker: the module-level knobs of the parent, then the estimator."""
     global _WORKER_ESTIMATOR
     import kiss_slam.intensity_deskew as idsk
@@ -55,8 +53,6 @@ def _motion_worker_init(estimator_kwargs, module_knobs, role="motion"):
     _WORKER_ESTIMATOR = idsk.ScanMotionEstimator(**estimator_kwargs)
     import os
     out = os.environ.get("KISS_PROFILE_WORKER")              # #179, diagnostics only: cProfile of the image worker, dumped at its exit
-    if out and role != "motion":                              # #180: the features stage writes its own file
-        out = out.replace(".prof", "") + f"_{role}.prof"
     if out:
         import cProfile
         import time
@@ -75,33 +71,18 @@ def _motion_worker_init(estimator_kwargs, module_knobs, role="motion"):
 _WORKER_PROFILE = None
 
 
-def _profiled(fn, *args):
+def _motion_worker(frame, timestamps, intensity, ring):
     if _WORKER_PROFILE is None:
-        return fn(*args)
+        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
     import time
     prof, _, busy = _WORKER_PROFILE
     t = time.perf_counter()
     prof.enable()
     try:
-        return fn(*args)
+        return _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring)[0]
     finally:
         prof.disable()
         busy[0] += time.perf_counter() - t
-
-
-def _motion_worker(frame, timestamps, intensity, ring, packed=None):
-    """Matching + estimation (+ range fallback) of one scan; `packed` = its features from the features stage (#180), else computed here."""
-    import kiss_slam.intensity_deskew as idsk
-
-    feats = None if packed is None else idsk.unpack_features(packed)
-    return _profiled(lambda: _WORKER_ESTIMATOR.motion(frame, timestamps, intensity, ring, feats=feats)[0])
-
-
-def _feature_worker(frame, timestamps, intensity, ring):
-    """#180: panorama + keypoints / descriptors of one scan - depends only on the scan, so it runs ahead of the matching."""
-    import kiss_slam.intensity_deskew as idsk
-
-    return _profiled(lambda: idsk.pack_features(_WORKER_ESTIMATOR.scan_features(frame, timestamps, intensity, ring)))
 
 
 def transform_points(pcd, T):
@@ -397,7 +378,6 @@ class KissSLAM:
             )
         self._image_motion_est = None      # online estimator
         self._motion_pool = None           # image_deskew.parallel: worker process running the estimator
-        self._feature_pool = None          # #180: second worker, the features of each scan ahead of the matching
         self._motion_futures = deque()     # motions submitted to it, oldest first
         self._rotvec_history = []          # image_deskew.rotation_smoothing (#047)
         self._validate_hist = []           # #109: image vs range rotation differences (running median)
@@ -482,23 +462,6 @@ class KissSLAM:
                         initializer=_motion_worker_init,
                         initargs=(estimator_kwargs, knobs),
                     )
-                    # #180: two stages - the features of each scan (panorama + detector, which depend only on the scan) in a second
-                    # worker, ahead of the matching; the same computations in the same order, so the same motions.  Not with the
-                    # "auto" panorama (its size is measured from the first scan inside the matching worker) or KISS_IMAGE_STAGES=1.
-                    if (self.image_cfg.panorama_width != "auto" and self.image_cfg.panorama_up != "auto"
-                            and os.environ.get("KISS_IMAGE_STAGES", "2") != "1"):
-                        import queue
-                        import threading
-
-                        self._feature_pool = ProcessPoolExecutor(
-                            max_workers=1,
-                            mp_context=multiprocessing.get_context("spawn"),
-                            initializer=_motion_worker_init,
-                            initargs=(estimator_kwargs, knobs, "features"),
-                        )
-                        self._forward_q = queue.Queue()
-                        self._forwarder = threading.Thread(target=self._forward_features, daemon=True)
-                        self._forwarder.start()
                 else:
                     self._image_motion_est = ScanMotionEstimator(**estimator_kwargs)
 
@@ -891,41 +854,11 @@ class KissSLAM:
         Scans must be submitted in the order they are processed (one worker: they run in that
         order, so the estimator sees the same sequence as the serial one).
         """
-        args = (frame, timestamps, intensity, ring)
-        if self._feature_pool is None:
-            self._motion_futures.append(self._motion_pool.submit(_motion_worker, *args))
-            return
-        from concurrent.futures import Future                    # #180: features now, matching when they are ready (in order)
-
-        proxy = Future()
-        self._forward_q.put((self._feature_pool.submit(_feature_worker, *args), args, proxy))
-        self._motion_futures.append(proxy)
-
-    def _forward_features(self):
-        """#180: passes each scan's features to the matching worker in submission order (one thread, so the order is kept)."""
-        while True:
-            item = self._forward_q.get()
-            if item is None:
-                return
-            ff, args, proxy = item
-            try:
-                packed = ff.result()
-                mf = self._motion_pool.submit(_motion_worker, *args, packed)
-            except BaseException as e:
-                proxy.set_exception(e)
-                continue
-
-            def done(m, proxy=proxy):
-                e = m.exception()
-                proxy.set_exception(e) if e is not None else proxy.set_result(m.result())
-            mf.add_done_callback(done)
+        self._motion_futures.append(
+            self._motion_pool.submit(_motion_worker, frame, timestamps, intensity, ring)
+        )
 
     def close_image_motion(self):
-        if self._feature_pool is not None:
-            self._forward_q.put(None)
-            self._forwarder.join()
-            self._feature_pool.shutdown(cancel_futures=True)
-            self._feature_pool = None
         if self._motion_pool is not None:
             self._motion_pool.shutdown(cancel_futures=True)
             self._motion_pool = None
