@@ -32,6 +32,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from kiss_icp.pipeline import OdometryPipeline
 from scipy.spatial.transform import Rotation
+from collections import deque
+
 from tqdm import tqdm, trange
 
 from kiss_slam.config import load_config
@@ -250,16 +252,18 @@ class SlamPipeline(OdometryPipeline):
             if err is not None:
                 raise err
             return item
+        # #186: the image motion is queued AHEAD scans in advance (was 1): one worker, the same order, so the same motions; a slow
+        # scan in the worker (range fallback, ~190 ms) is absorbed by the queue instead of stalling the registration.
+        ahead = max(1, int(os.environ.get("KISS_IMAGE_AHEAD", "4")))
+        queued = deque()
+        submitted = self._first
         for idx in trange(self._first, self._last, unit=" frames", dynamic_ncols=True):
             if prefetch:
-                if pending is None:
-                    pending = read_next()
-                    self.kiss_slam.submit_image_motion(*pending)
-                frame, timestamps, intensity, ring = pending
-                pending = None
-                if idx + 1 < self._last:
-                    pending = read_next()
-                    self.kiss_slam.submit_image_motion(*pending)
+                while submitted < self._last and submitted <= idx + ahead:
+                    queued.append(read_next())
+                    self.kiss_slam.submit_image_motion(*queued[-1])
+                    submitted += 1
+                frame, timestamps, intensity, ring = queued.popleft()
             else:
                 frame, timestamps, intensity, ring = read_next()
             start_time = time.perf_counter_ns()
