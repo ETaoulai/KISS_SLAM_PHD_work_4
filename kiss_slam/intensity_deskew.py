@@ -648,6 +648,7 @@ def features(xyz, ts, inten, ring, detector, normalisation="none", _clahe=[]):
     return P, T, valid, kps, desc, ts[ok].min(), big
 
 
+RANGE_CACHE = __import__("os").environ.get("KISS_RANGE_CACHE", "1") != "0"   # #201: KISS_RANGE_CACHE=0 = off (timing test)
 SATURATE_ROWS, SATURATE_FRAC = (128, 256, 512, 1024), 0.95
 
 
@@ -1164,7 +1165,7 @@ class ScanMotionEstimator:
         differ from the eager version as another seed would.  "candidate" needs the range motion on every scan: eager."""
         if self.range_motion == "fallback":
             prev_raw, self.prev_raw = self.prev_raw, (xyz, ts, ring)
-            cached, self._range_cache = getattr(self, "_range_cache", None), None   # #201: range features of the previous scan, if built
+            cached, self._range_cache = (getattr(self, "_range_cache", None) if RANGE_CACHE else None), None   # #201: previous scan's range features
             self.last_range_motion = None
             if M is not None or prev_raw is None:
                 return M, n
