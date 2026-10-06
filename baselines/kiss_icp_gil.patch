@@ -1,0 +1,22 @@
+63c63
+<              "points"_a, "origin"_a)
+---
+>              "points"_a, "origin"_a, py::call_guard<py::gil_scoped_release>())
+71,72c71,72
+<             "points"_a, "pose"_a)
+<         .def("_add_points", &VoxelHashMap::AddPoints, "points"_a)
+---
+>             "points"_a, "pose"_a, py::call_guard<py::gil_scoped_release>())
+>         .def("_add_points", &VoxelHashMap::AddPoints, "points"_a, py::call_guard<py::gil_scoped_release>())
+87c87
+<             "points"_a, "timestamps"_a, "relative_motion"_a);
+---
+>             "points"_a, "timestamps"_a, "relative_motion"_a, py::call_guard<py::gil_scoped_release>());
+106c106
+<             "kernel"_a);
+---
+>             "kernel"_a, py::call_guard<py::gil_scoped_release>());
+123c123
+<     m.def("_voxel_down_sample", &VoxelDownsample, "frame"_a, "voxel_size"_a);
+---
+>     m.def("_voxel_down_sample", &VoxelDownsample, "frame"_a, "voxel_size"_a, py::call_guard<py::gil_scoped_release>());
