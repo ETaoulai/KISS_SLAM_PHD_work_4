@@ -155,7 +155,8 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "cmb141": "default of after_091, COMBINATION: blend for the deskew + sector weights for the rotation (#141 / #142 / #144)",
         "fbk146": "default of after_091, fallback = KISS on scans where the image fails (#146 / #147)",
         "bf148": "default of after_091, PAIR: blend for the deskew + fallback = KISS (#148 / #149)",
-        "bfc150": "default of after_091, OPTION C: blend for the deskew + fallback = KISS from the 4th consecutive failure (#150 / #151 / #164)"}
+        "bfc150": "default of after_091, OPTION C: blend for the deskew + fallback = KISS from the 4th consecutive failure (#150 / #151 / #164)",
+        "blinl203": "locked method C + blend weighted also by the scan inliers (--cv-blend-inliers, #200 / #203)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:
@@ -227,7 +228,9 @@ def main():
             for p in (sorted(base.glob("*_*")) if base.exists() else []):
                 log = p.parent / f"{p.name}.log"
                 # ... and it wrote a trajectory: a crashed run also has the "wall" line (the exFAT symlink crash of #081)
-                if (p.is_dir() and log.exists() and "\nwall " in log.read_text(errors="replace").replace("\r", "\n")
+                txt = log.read_text(errors="replace").replace("\r", "\n") if log.exists() else ""
+                # #203: or the end-of-run summary of the pipeline (runs launched without /usr/bin/time)
+                if (p.is_dir() and log.exists() and ("\nwall " in txt or "KissSLAM| image motion:" in txt)
                         and any(p.glob("*/*_poses_tum.txt"))):
                     found[p.name] = p
         runs = [found[k] for k in sorted(found)]
