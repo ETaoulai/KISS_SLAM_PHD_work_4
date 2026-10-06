@@ -34,10 +34,9 @@ class MulRan:
 
     def __getitem__(self, idx):
         p = np.fromfile(self.scan_files[idx], np.float32).reshape(-1, 4).astype(np.float64)
-        if len(p) == H * W:
-            ring, t = self._ring, self.stamps[idx] + self._dt
-        else:                                              # incomplete scan (KISS-ICP: "broken point clouds"): no column layout
-            ring = np.zeros(len(p), np.int64)
-            t = np.full(len(p), self.stamps[idx] + PERIOD / 2)
+        # #208: a truncated scan (KAIST01's last: 13525 points) is the first columns of the sweep - the same layout holds for the points
+        # it has.  (Before: one time for all its points -> zero time span -> NaN in KISS-ICP's deskew -> abort at the end of the run.)
+        n = len(p)
+        ring, t = self._ring[:n], self.stamps[idx] + self._dt[:n]
         keep = (p[:, :3] != 0.0).any(axis=1)
         return np.ascontiguousarray(p[keep, :3]), t[keep], p[keep, 3], ring[keep]
