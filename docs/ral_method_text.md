@@ -71,14 +71,14 @@ moving sensor. *Effect* (row 8, #164): identical to row 7 on 30 of 43 sequences;
 
 ## Runtime
 
-Measured alone on one machine (48 cores; #166, #176, #177 on branch `speed_test`, speed fixes merged here — trajectories bit-identical to before),
+Measured alone on one machine (48 cores; #166, #176, #177 on branch `speed_test`, #178 on `ral_method`; speed fixes merged here — trajectories bit-identical to before),
 seed 0, `--parallel` (image motion in a second process, scans read by a background thread):
 
 | sequence (sensor, data length) | KISS-SLAM | ours (locked method) | ours / KISS |
 |---|---|---|---|
 | quad_easy (Ouster 128, 199 s) | 83 s · 2.4× real time | 179 s · 1.11× | 2.2× |
-| christ-church-03 (Hesai QT64, 312 s) | 66 s · 4.7× | 241 s · 1.29× (before the speed fixes) | 3.7× |
-| Boreas, 3000 scans (Velodyne 128, 300 s) | 237 s · 1.27× | 402 s · 0.75× | 1.7× |
+| christ-church-03 (Hesai QT64, 312 s) | 66 s · 4.7× | 224 s · 1.39× | 3.4× |
+| Boreas, 3000 scans (Velodyne 128, 300 s) | 237 s · 1.27× | 404 s · 0.74× | 1.7× |
 
 Both use 15–23 cores of the machine on average (KISS-ICP itself 4 threads; numpy / OpenBLAS, OpenCV and TBB pools by default) and 1.0–1.2 GB (handheld)
 or 2.7–2.8 GB (car). The blend and the fallback add no measurable cost (#166). Statement for the paper: 2–4× the cost of KISS-SLAM; real time on the handheld
