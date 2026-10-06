@@ -9,7 +9,7 @@
 Το §7β της σύνοψης έχει τα νεότερα ευρήματα (#033–#039) — **πρώτο απ' όλα: το ATE ενός run δεν είναι μετρήσιμο
 μέγεθος** (σ = 0.02–0.04 m), οπότε κάθε σύγκριση γίνεται με RPE/μήκος διαδρομής ή με 4+ runs.
 
-**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 5/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
+**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 6/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
 
 **Η μέθοδος αναλυτικά (εξισώσεις, κάθε επιλογή με την εγγραφή της): [`docs/method_description.md`](docs/method_description.md).** Ερώτημα
 θεωρητικής αξιολόγησης για ειδικό: [`docs/review_prompt_registration_deskew.md`](docs/review_prompt_registration_deskew.md).
@@ -47,6 +47,10 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
   Τα παλιά: `KISS_SLAM_PHD_work_3` = remote `archive3` (κλάδοι `main` ως το #080, `after_080`, `rotation_bearing`)· `KISS_SLAM_PHD_work_2` = remote `archive2` (κλάδοι `after_two_start`, `vertical_drift`, `intensity_norm`, `vertical_constraint`, `fast_fallback`)·
   `KISS_SLAM_PHD_work` = remote `archive` (κλάδοι `main` … `gating`, σταματά στο `fa86f3b`).)
   **Ο `main` δεν αλλάζει απευθείας (απόφαση Μ.Τ. 26/9):** κάθε νέα δουλειά σε δικό της κλάδο από τον `origin/main` — τρέχων `after_091` (2/10· docs και επιλογές της μεθόδου).
+  **Από 6/10:** `ral_method` = κλειδωμένη μέθοδος + διορθώσεις ταχύτητας χωρίς αλλαγή αποτελέσματος (#170 / #174 / #176)· δουλειά ταχύτητας στο `speed_test` (#169–#189), κανόνες εικόνας και ιδέες στο
+  **`image_rules`** (τρέχων κλάδος, #190–#203): `KISS_IMAGE_CPP=off|exact|all` (εικόνα σε C++, `scripts/build_image_fit.sh`), `KISS_IMAGE_AHEAD` (εικόνα N σαρώσεις μπροστά), `KISS_RANGE_CACHE`, `KISS_PROFILE_WORKER`,
+  ανιχνευτές `orb` / `akaze`, `--panorama-up=saturate`, `--kp-grid=C,N`, `--cv-blend-inliers`, `scripts/analyse_panorama_rows.py`. Περιβάλλον **`kiss-slam-gil`** = κλώνος με KISS-ICP χωρίς GIL
+  (`baselines/kiss_icp_gil.patch`) — μόνο εκεί· πραγματικός χρόνος στο όχημα (#202). Εκκρεμότητες: `docs/open_tasks.md` §«6/10».
   Β.9 σε git worktree `/home/photogrammetry/Kiss_SLAM-b9` (εκτέλεση με `scripts/worktree_run.py`, και `--parallel` από #157): κλάδοι `deskew_in_icp` → `b9_joint` (#156–#157) → `b9_joint_new` (C++, #158–#159).
   Προσοχή: `push.default = upstream` — ένας κλάδος που παρακολουθεί τον `origin/main` σπρώχνει στον `main`· νέοι κλάδοι με `git push -u origin <κλάδος>:<κλάδος>` (με ρητό όνομα· χωρίς αυτό ένας κλάδος από τον `origin/main` πάει στον `main`). OpenCV χτισμένο με SURF.
   Δεδομένα στο `/media/photogrammetry/A26C3DDF6C3DAF431/data/` (όχι στο `data/` του repo). Νέα datasets (NCD 2020 long / dynamic_spinning,
