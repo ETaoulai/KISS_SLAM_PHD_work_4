@@ -582,6 +582,13 @@ DETECT_SCALE = 1.0
 
 
 def _detect(detector, img):
+    kps, desc = _detect_raw(detector, img)
+    if desc is not None and desc.dtype == np.uint8 and desc.shape[1] % 8:   # #181: AKAZE M-LDB is 61 bytes; zero bytes added to a multiple
+        desc = np.pad(desc, ((0, 0), (0, -desc.shape[1] % 8)))              # of 8 for the C++ Hamming matcher - the distances do not change
+    return kps, desc
+
+
+def _detect_raw(detector, img):
     if DETECT_SCALE == 1.0:
         return detector.detectAndCompute(img, None)
     h, w = img.shape[:2]
