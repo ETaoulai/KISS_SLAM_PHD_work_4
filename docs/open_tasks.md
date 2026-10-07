@@ -179,7 +179,7 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 `scripts/boreas_gt.py`)· `run_ncd.py` / `run_baseline.py` διαβάζουν και τα δύο.
 
 **Σε εξέλιξη (ουρά, `kiss_runs/q222/`, κοινή συνάρτηση `common.sh` με παράλειψη ολοκληρωμένων):**
-- `kiss-q222` — #222 διαμόρφωση οχήματος σε φορητή / drone (9 ακολουθίες, σπόρος 0, έναντι `bfc150`)· τέλος `kiss_runs/q222_FINISHED`
+- ~~`kiss-q222` — #222~~ έγινε: ουδέτερη στις φορητές, καταστροφική στα drone NTU (log #222)· ανοιχτό: ποιο μέρος βλάπτει τα drone
 - `kiss-q223` — #223 MulRan: Γ (`ral223`) και διαμόρφωση οχήματος (`car223`) × 4 σπόροι × 4 ακολουθίες· τέλος `q223_FINISHED`
 - `kiss-q224` — #224 MulRan: GenZ-ICP / MAD-ICP (`mulran.cfg`) / CT-ICP (`driving`)· τέλος `q224_FINISHED`
 - `kiss-q225` — #225 Boreas χωρίς διόρθωση: Γ (`ral225`), διαμόρφωση οχήματος στη γρήγορη στοίβα (`carfast225`), GenZ / MAD / CT-ICP σε όλες τις 8· τέλος `q225_FINISHED`
