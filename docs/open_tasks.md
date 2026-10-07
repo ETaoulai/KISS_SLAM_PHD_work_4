@@ -180,8 +180,8 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 
 **Σε εξέλιξη (ουρά, `kiss_runs/q222/`, κοινή συνάρτηση `common.sh` με παράλειψη ολοκληρωμένων):**
 - ~~`kiss-q222` — #222~~ έγινε: ουδέτερη στις φορητές, καταστροφική στα drone NTU (log #222)· ανοιχτό: ποιο μέρος βλάπτει τα drone
-- `kiss-q223` — #223 MulRan: Γ (`ral223`) και διαμόρφωση οχήματος (`car223`) × 4 σπόροι × 4 ακολουθίες· τέλος `q223_FINISHED`
-- `kiss-q224` — #224 MulRan: GenZ-ICP / MAD-ICP (`mulran.cfg`) / CT-ICP (`driving`)· τέλος `q224_FINISHED`
+- ~~`kiss-q223` — #223~~ έγινε (log #223 / #224) — MulRan: Γ (`ral223`) και διαμόρφωση οχήματος (`car223`) × 4 σπόροι × 4 ακολουθίες· τέλος `q223_FINISHED`
+- ~~`kiss-q224` — #224~~ έγινε — MulRan: GenZ-ICP / MAD-ICP (`mulran.cfg`) / CT-ICP (`driving`)· τέλος `q224_FINISHED`
 - `kiss-q225` — #225 Boreas χωρίς διόρθωση: Γ (`ral225`), διαμόρφωση οχήματος στη γρήγορη στοίβα (`carfast225`), GenZ / MAD / CT-ICP σε όλες τις 8· τέλος `q225_FINISHED`
 Μετά από επανεκκίνηση της συνεδρίας: `systemctl --user is-active kiss-q22*` — αν όχι ενεργές χωρίς FINISHED, ξανά `systemd-run ... bash ~/kiss_runs/q222/run<n>.sh >> run<n>.log` (παραλείπει τα έτοιμα).
 **Βαθμολόγηση:** `evaluate_official.py <gt_lidar_tum.txt> <runs> --frame=none` (MulRan / Boreas)· οδομετρία των δικών μας / KISS-SLAM με `replay_backend.py <run> none` (+ αντίγραφο `*_poses_tum.txt`)·
