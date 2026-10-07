@@ -85,6 +85,23 @@ def main():
         from kiss_slam.tools.ncd_pcd import NewerCollege2020Pcd
         dataset = NewerCollege2020Pcd(seq)
 
+    if "elev-offset" in opts:                                # #219: constant vertical-angle offset of every point (deg), as KITTI's
+        import numpy as _npe                                    # 0.205 deg correction (#085) - a beam-elevation calibration test
+        _d = _npe.radians(float(opts["elev-offset"]))
+        _cls = type(dataset)
+        _get = _cls.__getitem__
+
+        def _get_corrected(self, idx, _get=_get, _d=_d):
+            out = _get(self, idx)
+            xyz = _npe.asarray(out[0], dtype=_npe.float64)
+            rxy = _npe.hypot(xyz[:, 0], xyz[:, 1]); r = _npe.linalg.norm(xyz, axis=1)
+            el = _npe.arctan2(xyz[:, 2], rxy) + _d
+            k = _npe.where(rxy > 0, r * _npe.cos(el) / _npe.maximum(rxy, 1e-12), 1.0)
+            new = _npe.ascontiguousarray(_npe.column_stack([xyz[:, 0] * k, xyz[:, 1] * k, r * _npe.sin(el)]))
+            return (new, *out[1:])
+        _cls.__getitem__ = _get_corrected
+        print(f"run_ncd| elevation offset {opts['elev-offset']} deg on every point (#219)", flush=True)
+
     auto_voxel = None
     if opts.get("voxel") == "auto":                          # #110: voxel from the sensor and the scene, v = sqrt(20) x median range x point spacing
         import numpy as _np
