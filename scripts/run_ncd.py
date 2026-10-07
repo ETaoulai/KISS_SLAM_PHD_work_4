@@ -134,7 +134,8 @@ def main():
             config.image_deskew.cv_blend = opts["cv-blend"]
             config.image_deskew.cv_blend_window = int(opts.get("cv-blend-window", 20))
             config.image_deskew.cv_blend_part = opts.get("cv-blend-part", "full")     # #137: full | rotation
-            config.image_deskew.cv_blend_use = opts.get("cv-blend-use", config.image_deskew.cv_blend_use)   # #137: both | deskew (default: the config, deskew on ral_method)
+        if "cv-blend-use" in opts:                               # #137: both | deskew (default: the config, deskew on ral_method) - #217: read on its own,
+            config.image_deskew.cv_blend_use = opts["cv-blend-use"]   # it was ignored without --cv-blend since the blend became the default
         if "--multi-baseline" in sys.argv:                       # #130: the motion fit with the matches of k-2 <-> k too
             config.image_deskew.multi_baseline = True
         if opts.get("multi-baseline") == "translation":          # #131: only its translation, the rotation of the two-scan fit
