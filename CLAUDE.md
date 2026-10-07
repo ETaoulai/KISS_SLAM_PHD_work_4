@@ -9,7 +9,7 @@
 Το §7β της σύνοψης έχει τα νεότερα ευρήματα (#033–#039) — **πρώτο απ' όλα: το ATE ενός run δεν είναι μετρήσιμο
 μέγεθος** (σ = 0.02–0.04 m), οπότε κάθε σύγκριση γίνεται με RPE/μήκος διαδρομής ή με 4+ runs.
 
-**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 6/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
+**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 7/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
 
 **Η μέθοδος αναλυτικά (εξισώσεις, κάθε επιλογή με την εγγραφή της): [`docs/method_description.md`](docs/method_description.md).** Ερώτημα
 θεωρητικής αξιολόγησης για ειδικό: [`docs/review_prompt_registration_deskew.md`](docs/review_prompt_registration_deskew.md).
@@ -47,6 +47,8 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
   Τα παλιά: `KISS_SLAM_PHD_work_3` = remote `archive3` (κλάδοι `main` ως το #080, `after_080`, `rotation_bearing`)· `KISS_SLAM_PHD_work_2` = remote `archive2` (κλάδοι `after_two_start`, `vertical_drift`, `intensity_norm`, `vertical_constraint`, `fast_fallback`)·
   `KISS_SLAM_PHD_work` = remote `archive` (κλάδοι `main` … `gating`, σταματά στο `fa86f3b`).)
   **Ο `main` δεν αλλάζει απευθείας (απόφαση Μ.Τ. 26/9):** κάθε νέα δουλειά σε δικό της κλάδο από τον `origin/main` — τρέχων `after_091` (2/10· docs και επιλογές της μεθόδου).
+  **Από 7/10: τρέχων κλάδος `mulran_car`** (από `image_rules`): MulRan / Boreas πλήρη (readers `kiss_slam/tools/mulran.py`, `boreas.py`· `scripts/mulran_gt.py`, `boreas_gt.py`), διαμόρφωση οχήματος
+  `--cv-blend-use=both --two-start-trans=0.2` (επιλογή), `--elev-offset`, `--stuck-adaptive`, `run_baseline.py` για Boreas / MulRan· εκκρεμότητες `docs/open_tasks.md` §«7/10».
   **Από 6/10:** `ral_method` = κλειδωμένη μέθοδος + διορθώσεις ταχύτητας χωρίς αλλαγή αποτελέσματος (#170 / #174 / #176)· δουλειά ταχύτητας στο `speed_test` (#169–#189), κανόνες εικόνας και ιδέες στο
   **`image_rules`** (τρέχων κλάδος, #190–#203): `KISS_IMAGE_CPP=off|exact|all` (εικόνα σε C++, `scripts/build_image_fit.sh`), `KISS_IMAGE_AHEAD` (εικόνα N σαρώσεις μπροστά), `KISS_RANGE_CACHE`, `KISS_PROFILE_WORKER`,
   ανιχνευτές `orb` / `akaze`, `--panorama-up=saturate`, `--kp-grid=C,N`, `--cv-blend-inliers`, `scripts/analyse_panorama_rows.py`. Περιβάλλον **`kiss-slam-gil`** = κλώνος με KISS-ICP χωρίς GIL

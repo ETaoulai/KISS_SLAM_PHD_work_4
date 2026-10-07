@@ -1,4 +1,4 @@
-# Εκκρεμότητες και ανοιχτά προβλήματα (29/9/2026· ενημερώσεις ως 6/10)
+# Εκκρεμότητες και ανοιχτά προβλήματα (29/9/2026· ενημερώσεις ως 7/10)
 
 *Συγκεντρωτική λίστα στο τέλος της φάσης 25–29/9 (#061–#080). Αντικαθιστά τη λίστα της 25/9 (στο ιστορικό του git). Κάθε σημείο
 παραπέμπει στην εγγραφή του log όπου υπάρχουν τα νούμερα. Όταν ένα σημείο κλείνει: γραμμή στο `STATUS.md`, εγγραφή στο log, διαγραφή
@@ -168,6 +168,24 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 - Γιατί το christ-church-03 τρέχει 3× πιο αργά (#031)· το KD-tree του ελέγχου των δύο αρχών (δική μας προσθήκη, βλ. CLAUDE.md).
 - Πρόσβαση του Μ.Τ. στο GitHub (`ETaoulai/KISS_SLAM_PHD_work_3`, private — το κύριο αποθετήριο από 29/9).
 
+
+## 7/10: όχημα (MulRan / Boreas) — κλάδος `mulran_car`, log #207–#225
+
+**ΑΠΟΦΑΣΗ Μ.Τ. 7/10:** (1) η «διαμόρφωση οχήματος» `--cv-blend-use=both --two-start-trans=0.2` και (2) η στοίβα πραγματικού χρόνου (`--panorama-up=4`, `KISS_IMAGE_CPP=all`, `KISS_IMAGE_AHEAD`, `KISS_RANGE_CACHE`,
+περιβάλλον `kiss-slam-gil`) είναι **επιλογές / παραλλαγές**, όχι προεπιλογή· (3) Boreas για το paper **χωρίς διόρθωση ανύψωσης**, για όλες τις μεθόδους (η μεροληψία ~+0.1° του αισθητήρα #219 / #221 αναφέρεται
+σε μία πρόταση)· (4) τα υπόλοιπα ανοιχτά: κανόνας ×4 στις 128 δέσμες (#204–#206), Sejong01 (πίσω από KISS-SLAM), αν η διαμόρφωση οχήματος γίνει κανόνας ανά σάρωση (π.χ. αρχή από την ανάμειξη μόνο όταν w < 0.5).
+
+**Δεδομένα:** MulRan `Extreme SSD/mulran/{KAIST01,DCC01,Riverside01,Sejong01}` (+ `gt_lidar_tum.txt`, `scripts/mulran_gt.py`)· Boreas 8 πλήρεις `Extreme SSD/boreas/boreas-<seq>` (+ `gt_boreas-<seq>_lidar_tum.txt`,
+`scripts/boreas_gt.py`)· `run_ncd.py` / `run_baseline.py` διαβάζουν και τα δύο.
+
+**Σε εξέλιξη (ουρά, `kiss_runs/q222/`, κοινή συνάρτηση `common.sh` με παράλειψη ολοκληρωμένων):**
+- `kiss-q222` — #222 διαμόρφωση οχήματος σε φορητή / drone (9 ακολουθίες, σπόρος 0, έναντι `bfc150`)· τέλος `kiss_runs/q222_FINISHED`
+- `kiss-q223` — #223 MulRan: Γ (`ral223`) και διαμόρφωση οχήματος (`car223`) × 4 σπόροι × 4 ακολουθίες· τέλος `q223_FINISHED`
+- `kiss-q224` — #224 MulRan: GenZ-ICP / MAD-ICP (`mulran.cfg`) / CT-ICP (`driving`)· τέλος `q224_FINISHED`
+- `kiss-q225` — #225 Boreas χωρίς διόρθωση: Γ (`ral225`), διαμόρφωση οχήματος στη γρήγορη στοίβα (`carfast225`), GenZ / MAD / CT-ICP σε όλες τις 8· τέλος `q225_FINISHED`
+Μετά από επανεκκίνηση της συνεδρίας: `systemctl --user is-active kiss-q22*` — αν όχι ενεργές χωρίς FINISHED, ξανά `systemd-run ... bash ~/kiss_runs/q222/run<n>.sh >> run<n>.log` (παραλείπει τα έτοιμα).
+**Βαθμολόγηση:** `evaluate_official.py <gt_lidar_tum.txt> <runs> --frame=none` (MulRan / Boreas)· οδομετρία των δικών μας / KISS-SLAM με `replay_backend.py <run> none` (+ αντίγραφο `*_poses_tum.txt`)·
+NTU `evaluate_ntu.py`, Spires / NCD `evaluate_official.py` με `official_eval/<seq>/gt_lidar.txt`.
 
 ## 6/10: ταχύτητα και κανόνες εικόνας — τι εκκρεμεί (κλάδοι `speed_test` → `image_rules`, log #166–#203)
 
