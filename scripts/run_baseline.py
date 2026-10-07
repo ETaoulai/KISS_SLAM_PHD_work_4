@@ -39,6 +39,17 @@ from pathlib import Path
 import numpy as np
 
 
+def car_dataset(seq: Path):
+    """#220: our car readers - Boreas (<seq>/lidar + applanix) and MulRan (<seq>/Ouster + global_pose.csv); None otherwise."""
+    if (seq / "lidar").is_dir() and (seq / "applanix").is_dir():
+        from kiss_slam.tools.boreas import Boreas
+        return Boreas(seq)
+    if (seq / "Ouster").is_dir() and (seq / "global_pose.csv").exists():
+        from kiss_slam.tools.mulran import MulRan
+        return MulRan(seq)
+    return None
+
+
 def results_dir(out: Path) -> Path:
     """A timestamped folder, no "latest" link (exFAT has no symbolic links, #081)."""
     d = out.resolve() / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -78,6 +89,9 @@ def main():
             return read(msg)
 
         dataset.read_point_cloud = read_and_stamp
+    elif car_dataset(seq) is not None:                     # #220: Boreas / MulRan (our readers, absolute point times)
+        dataset = car_dataset(seq)
+        stamps = None
     else:
         from kiss_slam.tools.ncd_pcd import NewerCollege2020Pcd
         dataset = NewerCollege2020Pcd(seq)
@@ -185,6 +199,8 @@ def run_cticp(seq: Path, out: Path, n_scans, opts):
         from kiss_slam.tools.point_cloud2 import read_point_cloud_raw
         dataset = RosbagDataset(seq, opts.get("topic", "/os_cloud_node/points"))
         dataset.read_point_cloud = read_point_cloud_raw          # absolute per-point times in s (header stamp + t)
+    elif car_dataset(seq) is not None:                           # #220: Boreas / MulRan, absolute point times
+        dataset = car_dataset(seq)
     else:
         from kiss_slam.tools.ncd_pcd import NewerCollege2020Pcd
         dataset = NewerCollege2020Pcd(seq)                         # returns absolute point times already
