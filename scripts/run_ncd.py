@@ -157,6 +157,9 @@ def main():
             config.image_deskew.two_start_cv_deskew = True
         if "fallback-after" in opts:                             # #150: fallback kiss only from the N-th consecutive failure
             config.image_deskew.fallback_kiss_after = int(opts["fallback-after"])
+        if "--stuck-adaptive" in sys.argv:                      # #213: stuck road patterns at any range (low pairs that barely move while
+            import kiss_slam.intensity_deskew as _idsk_st         # the elevated ones clearly do)
+            _idsk_st.STUCK_ADAPTIVE = (0.3, -5.0, 0.3)
         if "two-start-trans" in opts:                            # #211: two starts also on a translation disagreement (relative)
             config.image_deskew.two_start_trans_rel = float(opts["two-start-trans"])
         if "two-start" in opts:                                  # register twice when image and CV disagree (#057)

@@ -67,6 +67,7 @@ STUCK_MIN = None
 # Apply it only to the near floor (below STUCK_ELEV deg in the sensor frame and closer than STUCK_RANGE m), where the
 # patterns are; elsewhere a real match can look motionless when rotation and translation cancel (#026).
 STUCK_FLOOR_ONLY, STUCK_ELEV, STUCK_RANGE = False, -10.0, 5.0
+STUCK_ADAPTIVE = None   # #213: (fraction, low elevation deg, min motion m), e.g. (0.3, -5.0, 0.3); None = off
 # Optional ring × azimuth boolean mask of pixels fixed to the sensor (shadows of the rig, #035); a match whose
 # keypoint in the later scan falls on a masked pixel is dropped.  None = off.
 PIXEL_MASK = None
@@ -877,6 +878,17 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
         p, q, tp, tq = p[moved], q[moved], tp[moved], tq[moved]
         if len(p) < MIN_INL:
             return None, None, 0
+    if STUCK_ADAPTIVE is not None:                           # #213: sensor-fixed patterns on the road at any range (car: 8-10 m, #212)
+        frac, el_low, v_min = STUCK_ADAPTIVE                 # low pairs that barely move while the elevated ones clearly do = stuck
+        q_el = np.degrees(np.arctan2(q[:, 2], np.linalg.norm(q[:, :2], axis=1)))
+        disp = np.linalg.norm(p - q, axis=1)
+        low, high = q_el < el_low, q_el >= el_low
+        if high.sum() >= 10 and np.median(disp[high]) > v_min:
+            keep = ~(low & (disp < frac * np.median(disp[high])))
+            match_motion.n_stuck_adaptive = getattr(match_motion, "n_stuck_adaptive", 0) + int((~keep).sum())
+            p, q, tp, tq = p[keep], q[keep], tp[keep], tq[keep]
+            if len(p) < MIN_INL:
+                return None, None, 0
     M0, inl = ransac(p, q, rng)
     if M0 is None:
         return None, None, 0
