@@ -942,6 +942,12 @@ class KissSLAM:
             starts = [c[1] for c in cands.values()]
             disagree = max(rot(a, b) for i, a in enumerate(starts) for b in starts[i + 1:])
             force = self.image_cfg.two_start_always
+            rel = self.image_cfg.two_start_trans_rel                # #211: also when the translations disagree by more than rel
+            if rel is not None:
+                tn = [np.linalg.norm(st[:3, 3]) for st in starts]
+                dt = max(np.linalg.norm(a[:3, 3] - b[:3, 3]) for i, a in enumerate(starts) for b in starts[i + 1:])
+                if max(tn) > 0.2 and dt > rel * max(tn):          # > 0.2 m per scan (> 2 m/s): only when moving
+                    force = True
             if self.image_cfg.range_motion == "validate" and Mr is not None:     # #109: is the image motion consistent with the range one?
                 d_ir = rot(M, Mr)
                 hist = self._validate_hist

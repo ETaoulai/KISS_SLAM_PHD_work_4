@@ -157,6 +157,8 @@ def main():
             config.image_deskew.two_start_cv_deskew = True
         if "fallback-after" in opts:                             # #150: fallback kiss only from the N-th consecutive failure
             config.image_deskew.fallback_kiss_after = int(opts["fallback-after"])
+        if "two-start-trans" in opts:                            # #211: two starts also on a translation disagreement (relative)
+            config.image_deskew.two_start_trans_rel = float(opts["two-start-trans"])
         if "two-start" in opts:                                  # register twice when image and CV disagree (#057)
             v = opts["two-start"]                            # "none" / "off": single start (every result before #059)
             config.image_deskew.two_start_deg = None if v.lower() in ("none", "off") else float(v)
