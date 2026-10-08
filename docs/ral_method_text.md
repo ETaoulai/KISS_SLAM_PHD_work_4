@@ -86,7 +86,8 @@ The figures above are with the library defaults (no thread budget). A 4-thread-p
 - Against the strongest LiDAR-only method, Traj-LO (continuous time), the method is less accurate on most sequences (#162); it is on par with
   GenZ-ICP and CT-ICP and better than DLO and MAD-ICP on most datasets. The claim is a robust, large improvement of KISS-SLAM, not a new state of the art.
 - Car on a highway (MulRan Riverside01 / Sejong01): road markings fixed to the sensor make the image translation ~0 and the locked method fails (RTE 10.0 / 8.3 %); the car
-  configuration (blend also for the ICP start + translation trigger, an option) recovers Riverside01 (3.6 %, = KISS-SLAM) but Sejong01 stays behind KISS-SLAM (5.4 / 4.3 %, #223).
+  configuration (blend also for the ICP start + translation trigger, an option) recovers Riverside01 (3.6 %, = KISS-SLAM) but Sejong01 stays behind KISS-SLAM (5.4 / 4.3 %, #223): one 22 s stretch where a confidently wrong (stuck) image
+  translation meets along-track degenerate geometry and the blended start loses speed scan after scan (#227; open).
 - On the Boreas drives our odometry beats KISS-SLAM, MAD-ICP and GenZ-ICP but CT-ICP drifts less (RTE 0.37 / 0.40 %); after loop closures KISS-SLAM keeps the lower APE (#225).
 - Height drift on long trajectories (#060, #077, #153; on Boreas a ~+0.1° beam-elevation calibration bias common to all methods, #219 / #221), the stair case (#063), and sensors whose intensity image is sparse (Livox, #095–#116; the
   16-beam NTU Ouster where the image fails at altitude) remain limits.
