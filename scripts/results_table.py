@@ -73,6 +73,13 @@ for seq, folder, gt in [("keble-college-03", "2024-03-12-keble-college-03", "gt-
            "bodleian-library-02": "bodleian_02"}[seq]
     SEQUENCES.append(("Oxford Spires", seq, "Hesai QT64", ROOT / f"oxford_spires/{folder}/ground_truth/{gt}", "spires",
                       RUNS / "oxford_spires_full" / run))
+# 8/10: the other Oxford Spires sequences with a ground truth, on the external SSD (docs/datasets.md, kiss_runs/spires_new.tsv)
+SSD_SPIRES = Path("/media/photogrammetry/Extreme SSD/oxford_spires")
+for folder, run in [("2024-03-12-keble-college-02", "keble_02"), ("2024-03-12-keble-college-04", "keble_04"), ("2024-03-12-keble-college-05", "keble_05"),
+                    ("2024-03-13-observatory-quarter-02", "observatory_02"), ("2024-03-14-blenheim-palace-01", "blenheim_01"),
+                    ("2024-03-14-blenheim-palace-05", "blenheim_05"), ("2024-03-20-christ-church-05", "church_05")]:
+    SEQUENCES.append(("Oxford Spires", folder[11:], "Hesai QT64", SSD_SPIRES / folder / "ground_truth" / "gt-tum.txt", "spires",
+                      RUNS / "oxford_spires_full" / run))
 
 # New datasets (25/9, docs/datasets.md): organised as links in KD (ext4); Hilti 2021 and NTU VIRAL scored with THEIR official
 # protocols (scripts/evaluate_hilti.py, evaluate_ntu.py): one number per run, the challenge's APE / the dataset's ATE.

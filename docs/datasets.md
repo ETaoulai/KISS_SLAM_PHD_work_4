@@ -93,6 +93,25 @@ python scripts/evaluate_ntu.py eee_03 <run dir> --out=<dir>
 spms: πληρότητα 99 % σε όλα τα runs (και του KISS).
 
 
+## Oxford Spires — οι υπόλοιπες ακολουθίες με GT (8/10)
+
+Λήψη από τον φάκελο Google Drive του dataset (Μ.Τ. 8/10), **μόνο όσες έχουν `gt-tum.txt`** (ΑΠΟΦΑΣΗ Μ.Τ. 8/10: όσες δεν έχουν GT δεν χρειάζονται)· στον εξωτερικό SSD
+`Extreme SSD/oxford_spires/<ακολουθία>/{rosbag,ground_truth}/` (ROS1 bags + `gt-tum.txt`, και VILENS / HBA / COLMAP όπου υπάρχουν). Ελέγχθηκαν: ανοίγουν, `/hesai/pandar` (Hesai QT64), το GT καλύπτει όλη τη διάρκεια.
+
+| ακολουθία | όνομα run | bags | διάρκεια s | σαρώσεις |
+|---|---|---|---|---|
+| 2024-03-12-keble-college-02 | `keble_02` | 1 | 300 | 3007 |
+| 2024-03-12-keble-college-04 | `keble_04` | 2 | 681 | 6828 |
+| 2024-03-12-keble-college-05 | `keble_05` | 2 | 581 | 5834 |
+| 2024-03-13-observatory-quarter-02 | `observatory_02` | 1 | 275 | 2755 |
+| 2024-03-14-blenheim-palace-01 | `blenheim_01` | 1 | 404 | 4052 |
+| 2024-03-14-blenheim-palace-05 | `blenheim_05` | 1 | 339 | 3401 |
+| 2024-03-20-christ-church-05 | `church_05` | 1 | 800 | 8007 |
+
+Λίστα για runs: `kiss_runs/spires_new.tsv` (ίδια μορφή με `all_seqs.tsv`, **χωριστά** ώστε το «όλες οι 42» να μη αλλάξει)· βαθμολόγηση: `results_table.py` (frame `spires`, runs `oxford_spires_full/<όνομα>`).
+Με τις 6 παλιές: 13 ακολουθίες Spires με GT. Χωρίς GT στο Drive (δεν κατέβηκαν): keble-college-01, blenheim-palace-03 / 04, bodleian-library-01, christ-church-01 / 04 / 06, new-college-01…04
+(πλήρης λίστα αρχείων `kiss_runs/spires_dl/order_all.tsv`).
+
 ## Οχήματα (1–5/10)
 
 - **KITTI odometry 07** (#084, #085): οι σαρώσεις του raw / sync είναι **ήδη διορθωμένες** ως προς την κίνηση — ακατάλληλο για δοκιμή deskew. Δεδομένα `Extreme SSD/kitti/`.
