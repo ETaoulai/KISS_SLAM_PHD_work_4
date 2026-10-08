@@ -1,4 +1,4 @@
-"""Offline check of klt1d vs SURF on christ-church-03 scans 200-300 against GT rotation (analyse_panorama_rows style)."""
+"""#230 offline check: image rotation magnitude vs GT for a detector / upscaling on 150 scans (200-349): klt1d_offline_check.py <seq> surf|klt1d <up>"""
 import sys, time, numpy as np
 sys.path.insert(0, "/home/photogrammetry/Kiss_SLAM-main/scripts"); sys.path.insert(0, "/home/photogrammetry/Kiss_SLAM-main")
 import analyse_panorama_rows as a
