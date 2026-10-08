@@ -185,7 +185,7 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 | #234 κυβικό μοντέλο | `--model=cub` | χειρότερο (church_03) | απορρίφθηκε |
 | #235 / #236 MAGSAC++ / GNC-TLS / δύο μοντέλα | `--robust=magsac\|gnc\|multi` | = RANSAC, κανένα ταχύτερο (3.8 / 68 / 5.3 / 18 ms) | απορρίφθηκαν |
 
-**Hilti 2021 + 2022 (#238):** λήψη σε εξέλιξη (`kiss-hiltidl`, τέλος `kiss_runs/hilti_dl/FINISHED`)· μετά: λίστα ακολουθιών (όπως `spires_new.tsv`), στάδια δοκιμών με έγκριση· αξιολόγηση 2022 `evaluate_hilti2022.py`, 2021 `evaluate_hilti.py`.
+**Hilti 2021 + 2022 (#238):** λήψη ολοκληρώθηκε (24 / 24 bags), λίστα `kiss_runs/hilti_new.tsv` (22)· στάδια δοκιμών με έγκριση (1 πλήρες → ~7 → όλες, Γ × 4 σπόροι + KISS-SLAM)· αξιολόγηση 2022 `evaluate_hilti2022.py`, 2021 `evaluate_hilti.py`.
 
 Σενάρια offline: `scripts/klt1d_offline_check.py`, `robust_offline_check.py` (env `ROBUST`), `analyse_subpanorama_motion.py`, `analyse_gt_motion_models.py` (→ `kiss_runs/gt_motion_models_232.txt`)· launchers `kiss_runs/q222/run226.sh` … `run236.sh`.
 Για τη στάση του Sejong01 η διόρθωση πρέπει να γίνει **πριν** από την ανθεκτική εκτίμηση: ευρύτερο / μη καθοδηγούμενο παράθυρο όταν εικόνα και σταθερή ταχύτητα διαφωνούν, ή εικόνα απόστασης εκεί.

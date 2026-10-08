@@ -63,7 +63,10 @@ python scripts/evaluate_hilti.py /home/photogrammetry/kiss_data/hilti_2021/<seq>
 Λήψη (Μ.Τ. 8/10: όσες έχουν GT — όλες έχουν) από Hugging Face `Hilti-Research/hilti-slam-challenge-2021` / `-2022` (ανοιχτά, χωρίς σύνδεση) στον εξωτερικό SSD:
 `Extreme SSD/hilti_2021/<seq>/{rosbag,ground_truth}/` (οι 6 που έλειπαν: Basement_3, Basement_4, Campus_1, Campus_2, Construction_Site_2 — prism· Parking_1 — pole· 138 GB) και
 `Extreme SSD/hilti_2022/<exp>/{rosbag,ground_truth}/` (exp01–07, 09–11, 14–16, 18, 21, 23 σε 3 τμήματα· 336 GB) + `hilti_2022/calibration/lidar_calibration.yaml`, `README.md`.
-Μονάδα `kiss-hiltidl` (`kiss_runs/hilti_dl/dl.sh`, συνέχιση / παράλειψη ολοκληρωμένων, έλεγχος μεγέθους)· οι 6 παλιές του 2021 μένουν στο `kiss_data/hilti_2021/`. Για χώρο σβήστηκαν
+Μονάδα `kiss-hiltidl` (`kiss_runs/hilti_dl/dl.sh`, συνέχιση / παράλειψη ολοκληρωμένων, έλεγχος μεγέθους) — **ολοκληρώθηκε 9/10 00:33, 24 / 24 bags, χωρίς αποτυχία**· έλεγχος: όλα ανοίγουν, το GT
+πέφτει μέσα σε κάθε bag — εξαίρεση exp23: τα 3 τμήματα είναι συνεχόμενα (974 s) αλλά το τελευταίο σημείο ελέγχου είναι ~77 s μετά το τέλος (δεν αντιστοιχίζεται, για καμία μέθοδο)· διάρκειες
+2021: Basement_3 331 s, Basement_4 350, Campus_1 430, Campus_2 375, Construction_Site_2 399, Parking_1 582· 2022: 74 (exp14) – 974 s (exp23), 5–22 σημεία ελέγχου ανά ακολουθία.
+Λίστα για runs: `kiss_runs/hilti_new.tsv` (22: οι 6 νέες του 2021 + οι 16 του 2022, ίδια μορφή με `all_seqs.tsv`, χωριστά)· το `kiss_runs/q222/common.sh` τη διαβάζει. οι 6 παλιές του 2021 μένουν στο `kiss_data/hilti_2021/`. Για χώρο σβήστηκαν
 τα σημεία του KITTI (όλα ήδη διορθωμένα ως προς την κίνηση, #085 / #207: odometry velodyne 85 GB, raw 0027 sync / extract 16 GB)· κρατήθηκαν GT / poses / calib (25 MB).
 
 **2022, αισθητήρας:** Hesai PandarXT-32, `/hesai/pandar`, πεδία x y z intensity (float) timestamp (float64, απόλυτος) ring (uint16), πλαίσιο `PandarXT-32` — η ίδια μορφή με το Spires
