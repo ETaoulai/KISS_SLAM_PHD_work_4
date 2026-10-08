@@ -168,7 +168,10 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "w600m": "locked method C, Hesai native 600 columns x 512 rows (#205)",
         "r512c": "locked method C, 512 rows + C++ image + look-ahead + range cache + KISS-ICP without GIL (#206)",
         "w600c": "locked method C, Hesai 600 x 512 + C++ image + look-ahead + range cache + KISS-ICP without GIL (#206)",
-        "car222": "locked method C + car configuration (ICP start from the blend + two-start translation trigger 0.2, #217 / #222)"}
+        "car222": "locked method C + car configuration (ICP start from the blend + two-start translation trigger 0.2, #217 / #222)",
+        "ral228": "locked method C (new Oxford Spires sequences, #228 / #229)",
+        "kiss228": "KISS-SLAM (new Oxford Spires sequences, #228 / #229)",
+        "klt230": "locked method C with 1D KLT flow on the native panorama (no upscaling) instead of SURF (#230)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:

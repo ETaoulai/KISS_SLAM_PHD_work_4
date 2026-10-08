@@ -101,8 +101,8 @@ class SlamPipeline(OdometryPipeline):
             self.slam_config.image_deskew.motion_file = str(motion_file)
         if image_detector is not None:
             # Plain attribute assignment skips the config's Literal check, so check here.
-            if image_detector not in ("sift", "surf", "orb", "akaze"):
-                raise ValueError(f"--image-detector must be sift, surf, orb or akaze, not {image_detector!r}")
+            if image_detector not in ("sift", "surf", "orb", "akaze", "klt1d"):
+                raise ValueError(f"--image-detector must be sift, surf, orb, akaze or klt1d, not {image_detector!r}")
             self.slam_config.image_deskew.detector = image_detector
         self.use_intensity = self.slam_config.intensity.enabled
         self.use_image_deskew = self.slam_config.image_deskew.enabled

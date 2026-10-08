@@ -581,7 +581,107 @@ def make_detector(detector="sift", surf_hessian=100.0, surf_upright=False):
     if detector == "akaze":                                # #181: upright AKAZE (M-LDB binary descriptor without orientation), Hamming matching
         x = cv2.xfeatures2d if hasattr(cv2, "xfeatures2d") and hasattr(cv2.xfeatures2d, "AKAZE_create") else cv2   # OpenCV 5: in contrib
         return x.AKAZE_create(descriptor_type=x.AKAZE_DESCRIPTOR_MLDB_UPRIGHT, threshold=AKAZE_THRESHOLD)
-    raise ValueError(f"unknown detector {detector!r}: 'sift', 'surf', 'orb' or 'akaze'")
+    if detector == "klt1d":                                # #230: no descriptors - 1D Lucas-Kanade flow along each ring (KLT1D_* below)
+        return Klt1dDetector()
+    raise ValueError(f"unknown detector {detector!r}: 'sift', 'surf', 'orb', 'akaze' or 'klt1d'")
+
+
+# #230 (branch matching_intensities): 1D KLT flow on the panorama, no descriptors.  A ring is one row of the panorama (panorama_up = 1, no
+# upscaling), so the motion of a pixel between two sweeps is, to first order, a shift along its row (azimuth); the 1D flow finds that shift
+# by Lucas-Kanade on a 1 x (2 KLT1D_HALF + 1) window, coarse to fine over KLT1D_LEVELS halvings of the columns, from the predicted shift
+# (the previous scan's median shift, or the constant-velocity projection when guided_prediction is "motion" / "hybrid" and turning fast).
+# Points: the pixels with the strongest horizontal gradient, at most KLT1D_PER_CELL per KLT1D_CELL columns of each row.  A track is kept
+# when it converges, its mean absolute residual is below KLT1D_MAX_RES grey levels and the backward track returns within KLT1D_FB px.
+KLT1D_HALF, KLT1D_LEVELS, KLT1D_ITERS = 7, 4, 10
+KLT1D_CELL, KLT1D_PER_CELL, KLT1D_MIN_GRAD = 16, 1, 8.0
+KLT1D_MAX_RES, KLT1D_FB = 12.0, 0.5
+
+
+class Klt1dDetector:
+    """detectAndCompute for klt1d: keypoints = strong horizontal gradients per row cell; 'descriptors' = a placeholder (one column) so the
+    existing None / count checks hold; the matching itself is klt1d_matches on the panorama images (features()[6])."""
+
+    def detectAndCompute(self, img, mask=None):
+        f = img.astype(np.float32)
+        gx = np.abs(0.5 * (np.roll(f, -1, axis=1) - np.roll(f, 1, axis=1)))
+        H, Wd = gx.shape
+        nc = Wd // KLT1D_CELL
+        g = gx[:, :nc * KLT1D_CELL].reshape(H, nc, KLT1D_CELL)
+        j = np.argsort(-g, axis=2)[:, :, :KLT1D_PER_CELL]                    # strongest per cell
+        rows, cells, k = np.meshgrid(np.arange(H), np.arange(nc), np.arange(KLT1D_PER_CELL), indexing="ij")
+        cols = cells * KLT1D_CELL + j
+        val = np.take_along_axis(g, j, axis=2)
+        ok = val >= KLT1D_MIN_GRAD
+        ok[:1] = False; ok[-1:] = False                                      # no first / last row (half-pixel rows of the lookup)
+        kps = [cv2.KeyPoint(float(c), float(r), 1.0, -1, float(v)) for r, c, v in zip(rows[ok], cols[ok], val[ok])]
+        return kps, np.zeros((len(kps), 1), np.float32)
+
+
+def _row_sample(I, r, x):
+    """Linear interpolation of rows r of image I (float, H x W) at columns x, with wrap-around."""
+    Wd = I.shape[1]
+    x0 = np.floor(x).astype(int)
+    a = x - x0
+    return (1 - a) * I[r, x0 % Wd] + a * I[r, (x0 + 1) % Wd]
+
+
+def _klt1d_track(I1, I2, r, x1, x2):
+    """1D Lucas-Kanade along rows: x2 (initial guess) -> refined position in I2 of the window of I1 at (r, x1).  Coarse to fine.
+    Returns (x2, mean |residual|, converged)."""
+    off = np.arange(-KLT1D_HALF, KLT1D_HALF + 1)
+    pyr1, pyr2 = [I1], [I2]
+    for _ in range(KLT1D_LEVELS - 1):
+        pyr1.append(cv2.resize(pyr1[-1], (pyr1[-1].shape[1] // 2, pyr1[-1].shape[0]), interpolation=cv2.INTER_AREA))
+        pyr2.append(cv2.resize(pyr2[-1], (pyr2[-1].shape[1] // 2, pyr2[-1].shape[0]), interpolation=cv2.INTER_AREA))
+    d = (x2 - x1).astype(np.float64)                                          # shift at full resolution
+    conv = np.ones(len(x1), bool)
+    for lv in range(KLT1D_LEVELS - 1, -1, -1):
+        s = 2.0 ** lv
+        A, B = pyr1[lv], pyr2[lv]
+        xs = (x1 + 0.5) / s - 0.5
+        X = xs[:, None] + off[None, :]
+        R = np.broadcast_to(r[:, None], X.shape)
+        T = _row_sample(A, R, X)
+        Tx = 0.5 * (_row_sample(A, R, X + 1) - _row_sample(A, R, X - 1))
+        den = (Tx ** 2).sum(1) + 1e-6
+        u = d / s
+        for _ in range(KLT1D_ITERS):
+            Iw = _row_sample(B, R, X + u[:, None])
+            step = (Tx * (T - Iw)).sum(1) / den
+            u = u + step
+            if np.all(np.abs(step) < 0.01):
+                break
+        conv &= np.abs(step) < 0.1
+        d = u * s
+    X = x1[:, None] + off[None, :]
+    R = np.broadcast_to(r[:, None], X.shape)
+    res = np.abs(_row_sample(I1, R, X) - _row_sample(I2, R, X + d[:, None])).mean(1)
+    return x1 + d, res, conv
+
+
+def klt1d_matches(f1, f2, shift=0.0, centres=None):
+    """#230: (xy1, xy2) pixel pairs of panorama f1 -> f2 by 1D KLT flow from the keypoints of f1.  `centres`: per-keypoint predicted
+    (pred, ok) as predict_pixels; else every keypoint starts at `shift` columns."""
+    kp1 = f1[3]
+    if len(kp1) == 0:
+        return np.zeros((0, 2)), np.zeros((0, 2))
+    I1, I2 = f1[6].astype(np.float32), f2[6].astype(np.float32)
+    xy = np.array([k.pt for k in kp1])
+    r = np.round(xy[:, 1]).astype(int)                                        # rows of the image the detector saw (= rings when UP = 1)
+    x1 = xy[:, 0]
+    x0 = x1 + shift
+    if centres is not None:
+        pred, okp = centres
+        x0 = np.where(okp, pred[:, 0], x0)
+        x0 = x1 + ((x0 - x1 + W / 2) % W - W / 2)                            # shortest way round
+    x2, res, conv = _klt1d_track(I1, I2, r, x1, x0)
+    xb, _, convb = _klt1d_track(I2, I1, r, x2 % W, x1)                       # backward
+    fb = np.abs(((xb - x1) + W / 2) % W - W / 2)
+    good = conv & convb & (res < KLT1D_MAX_RES) & (fb < KLT1D_FB)
+    klt1d_matches.last = (len(x1), int(good.sum()))
+    xy1 = xy[good]
+    xy2 = np.column_stack([x2[good] % W, xy[good, 1]])
+    return xy1, xy2
 
 
 AKAZE_THRESHOLD = 0.001                                    # #181: OpenCV default detector response threshold
@@ -590,6 +690,9 @@ AKAZE_THRESHOLD = 0.001                                    # #181: OpenCV defaul
 # #093: scale of the panorama for the detector only (1 = every result before).  < 1: the image is shrunk before SURF / SIFT (cost ~ area)
 # and the keypoints are mapped back to full-resolution pixels, so matching, lookup and the fit are unchanged.
 DETECT_SCALE = 1.0
+
+
+KLT1D_ACTIVE = False   # #230: set by ScanMotionEstimator(detector='klt1d')
 
 
 KP_GRID = None    # #199: (cell px, n) - keep at most the n strongest keypoints per cell x cell block of the panorama (even spread); None = all
@@ -834,6 +937,17 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
     if d1 is None or d2 is None or len(kp1) < 2 or len(kp2) < 2:
         return None, None, 0
     global GUIDED_SHIFT
+    if KLT1D_ACTIVE and len(f1) > 6 and d1.shape[1] == 1:             # #230: 1D KLT flow instead of descriptor matching (intensity
+                                                                        # panorama only: the range fallback keeps SURF, 64-wide descriptors)
+        fast = abs(GUIDED_SHIFT) > _px(GUIDED_MAX_SHIFT)
+        use_motion = GUIDED_PREDICTION == "motion" or (GUIDED_PREDICTION == "hybrid" and fast)
+        centres = predict_pixels(f1, f2, GUIDED_PRED_MOTION) if (use_motion and GUIDED_PRED_MOTION is not None) else None
+        xy1, xy2 = klt1d_matches(f1, f2, GUIDED_SHIFT, centres)
+        if len(xy1) >= GUIDED_MIN_MATCHES:
+            dx = xy2[:, 0] - xy1[:, 0]
+            GUIDED_SHIFT = float(np.median((dx + W / 2) % W - W / 2))
+        match_motion.last_good = []
+        return _motion_from_pixels(f1, f2, xy1, xy2, period, rng, model, subpixel, stuck_min, floor_only, elev, range_)
     good = None
     fast = abs(GUIDED_SHIFT) > _px(GUIDED_MAX_SHIFT)
     use_motion = GUIDED_PREDICTION == "motion" or (GUIDED_PREDICTION == "hybrid" and fast)        # #089: hybrid = motion only when fast
@@ -862,6 +976,12 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
         good = [m for m in good if not on_mask(kp2[m.trainIdx])]
     xy1 = np.array([kp1[m.queryIdx].pt for m in good]).reshape(-1, 2)
     xy2 = np.array([kp2[m.trainIdx].pt for m in good]).reshape(-1, 2)
+    return _motion_from_pixels(f1, f2, xy1, xy2, period, rng, model, subpixel, stuck_min, floor_only, elev, range_)
+
+
+def _motion_from_pixels(f1, f2, xy1, xy2, period, rng, model, subpixel, stuck_min, floor_only, elev, range_):
+    """The rest of match_motion from matched pixel pairs (descriptor matches or #230 KLT tracks): lookup, stuck filters, RANSAC, fit."""
+    P1, T1, v1 = f1[:3]; P2, T2, v2 = f2[:3]; t_start = f2[5]
     p, tp, ok1 = lookup_batch(P1, T1, v1, xy1, subpixel)          # #087: vectorised, same results as the per-keypoint lookup
     q, tq, ok2 = lookup_batch(P2, T2, v2, xy2, subpixel)
     both = ok1 & ok2
@@ -1032,6 +1152,8 @@ class ScanMotionEstimator:
         self.stuck_min, self.floor_only, self.elev, self.range_ = stuck_min, floor_only, elev, range_
         self.detector_name = detector
         self.detector = make_detector(detector, surf_hessian, surf_upright)
+        global KLT1D_ACTIVE
+        KLT1D_ACTIVE = detector == "klt1d"
         self.bf = cv2.BFMatcher(cv2.NORM_HAMMING if detector in ("orb", "akaze") else cv2.NORM_L2)   # #088 / #181: ORB, AKAZE binary
         self.range_bf = cv2.BFMatcher(cv2.NORM_L2)          # #181: the range panorama always uses SURF (float descriptors)
         self.rng = np.random.default_rng(seed)
