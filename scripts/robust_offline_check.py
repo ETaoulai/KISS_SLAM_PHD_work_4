@@ -1,4 +1,4 @@
-"""#230 offline check: image rotation magnitude vs GT for a detector / upscaling on 150 scans (200-349): klt1d_offline_check.py <seq> surf|klt1d <up>"""
+"""#234 / #235 offline: image rotation vs GT; env ROBUST=ransac or magsac. Usage: robust_offline_check.py <seq> <det> <up> [model]"""
 import sys, time, numpy as np
 sys.path.insert(0, "/home/photogrammetry/Kiss_SLAM-main/scripts"); sys.path.insert(0, "/home/photogrammetry/Kiss_SLAM-main")
 import analyse_panorama_rows as a
