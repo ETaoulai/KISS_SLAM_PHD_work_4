@@ -47,7 +47,8 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
   Τα παλιά: `KISS_SLAM_PHD_work_3` = remote `archive3` (κλάδοι `main` ως το #080, `after_080`, `rotation_bearing`)· `KISS_SLAM_PHD_work_2` = remote `archive2` (κλάδοι `after_two_start`, `vertical_drift`, `intensity_norm`, `vertical_constraint`, `fast_fallback`)·
   `KISS_SLAM_PHD_work` = remote `archive` (κλάδοι `main` … `gating`, σταματά στο `fa86f3b`).)
   **Ο `main` δεν αλλάζει απευθείας (απόφαση Μ.Τ. 26/9):** κάθε νέα δουλειά σε δικό της κλάδο από τον `origin/main` — τρέχων `after_091` (2/10· docs και επιλογές της μεθόδου).
-  **Από 7/10: τρέχων κλάδος `mulran_car`** (από `image_rules`): MulRan / Boreas πλήρη (readers `kiss_slam/tools/mulran.py`, `boreas.py`· `scripts/mulran_gt.py`, `boreas_gt.py`), διαμόρφωση οχήματος
+  **Από 8/10: τρέχων κλάδος `matching_intensities`** (από `mulran_car`): ανιχνευτής `klt1d` (ροή KLT 1D, #230).
+  **Από 7/10: κλάδος `mulran_car`** (από `image_rules`): MulRan / Boreas πλήρη (readers `kiss_slam/tools/mulran.py`, `boreas.py`· `scripts/mulran_gt.py`, `boreas_gt.py`), διαμόρφωση οχήματος
   `--cv-blend-use=both --two-start-trans=0.2` (επιλογή), `--elev-offset`, `--stuck-adaptive`, `run_baseline.py` για Boreas / MulRan· εκκρεμότητες `docs/open_tasks.md` §«7/10».
   **Από 6/10:** `ral_method` = κλειδωμένη μέθοδος + διορθώσεις ταχύτητας χωρίς αλλαγή αποτελέσματος (#170 / #174 / #176)· δουλειά ταχύτητας στο `speed_test` (#169–#189), κανόνες εικόνας και ιδέες στο
   **`image_rules`** (τρέχων κλάδος, #190–#203): `KISS_IMAGE_CPP=off|exact|all` (εικόνα σε C++, `scripts/build_image_fit.sh`), `KISS_IMAGE_AHEAD` (εικόνα N σαρώσεις μπροστά), `KISS_RANGE_CACHE`, `KISS_PROFILE_WORKER`,
