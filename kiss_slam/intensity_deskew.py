@@ -666,6 +666,9 @@ def klt1d_matches(f1, f2, shift=0.0, centres=None):
     if len(kp1) == 0:
         return np.zeros((0, 2)), np.zeros((0, 2))
     I1, I2 = f1[6].astype(np.float32), f2[6].astype(np.float32)
+    if I1.shape != I2.shape:                     # a ring without returns in one scan: rows no longer match - no tracks (image failure)
+        klt1d_matches.last = (len(kp1), 0)
+        return np.zeros((0, 2)), np.zeros((0, 2))
     xy = np.array([k.pt for k in kp1])
     r = np.round(xy[:, 1]).astype(int)                                        # rows of the image the detector saw (= rings when UP = 1)
     x1 = xy[:, 0]
