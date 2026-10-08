@@ -251,7 +251,8 @@ def main():
                 # ... and it wrote a trajectory: a crashed run also has the "wall" line (the exFAT symlink crash of #081)
                 txt = log.read_text(errors="replace").replace("\r", "\n") if log.exists() else ""
                 # #203: or the end-of-run summary of the pipeline (runs launched without /usr/bin/time)
-                if (p.is_dir() and log.exists() and ("\nwall " in txt or "KissSLAM| image motion:" in txt)
+                # #237: or the pipeline's final metrics table (KISS-SLAM arms have no image-motion line)
+                if (p.is_dir() and log.exists() and ("\nwall " in txt or "KissSLAM| image motion:" in txt or "Number of closures found" in txt)
                         and any(p.glob("*/*_poses_tum.txt"))):
                     found[p.name] = p
         runs = [found[k] for k in sorted(found)]

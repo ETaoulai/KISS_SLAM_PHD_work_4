@@ -81,6 +81,15 @@ cache and KISS-ICP without the GIL → 280.9 s for 300 s of driving (1.07×, 11 
 The figures above are with the library defaults (no thread budget). A 4-thread-per-library budget was measured (#168: identical trajectories, 3–8 % slower, still
 6–11 cores) and then removed from the code (ΑΠΟΦΑΣΗ Μ.Τ. 5/10); the paper states the runtime as above, with the measured core count.
 
+## Design alternatives tested (for the discussion / ablation; 8/10, #230–#236)
+
+Kept as options, not in the method: descriptor-free 1D KLT flow along the rings on the native panorama (worse; it cannot follow vertical shifts), 2D pyramidal
+KLT (on par with SURF), upright ORB (promising in one seed, open), a cubic motion model (worse: more unknowns from the same matches), 180-degree sub-panoramas
+(every match spans a full sweep, so a sub-panorama does not resolve the motion within the sweep), and MAGSAC++, GNC-TLS and two-model fitting in place of
+RANSAC (same trajectories, slower: RANSAC stops early on 300-1100 pairs and the time fit after it is already robust). Across 38 ground truths the motion
+over one sweep is never constant-velocity; angular acceleration (our model) is the right minimum for handheld data (#233).
+Evaluation set: 13 Oxford Spires sequences with ground truth (7 added 8/10: C vs KISS-SLAM APE x0.20, RTE x0.32, #229).
+
 ## Limits (to state in the paper)
 
 - Against the strongest LiDAR-only method, Traj-LO (continuous time), the method is less accurate on most sequences (#162); it is on par with
