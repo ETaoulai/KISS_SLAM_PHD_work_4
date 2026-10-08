@@ -355,7 +355,74 @@ def inliers_batch(A, B, M):
     return (np.degrees(np.arccos(np.clip(cos, -1, 1))) < BEARING_THR) & (np.abs(ra - rb) < RANGE_REL * ra)
 
 
+# #235: MAGSAC++-style robust estimation of the rigid motion (Barath et al., CVPR 2020) for 3D-3D pairs - OpenCV's USAC_MAGSAC covers only
+# 2D models.  Hypotheses as RANSAC (3 pairs, Kabsch); each scored by the sigma-marginalised loss instead of the inlier count: the residual's
+# inlier likelihood (chi, 3 DOF) integrated over a noise sigma uniform in (0, sigma_max], sigma_max = RANSAC_THR / k (k = sqrt(chi2_0.99(3)));
+# the best one refined by sigma-consensus++ (IRLS: Kabsch weighted by the marginalised weights, MAGSAC_IRLS times).  Tabulated once.
+ROBUST = "ransac"            # "ransac" (every result before) | "magsac"
+MAGSAC_IRLS = 3
+
+
+def _magsac_tables():
+    from scipy.stats import chi2
+    k = np.sqrt(chi2.ppf(0.99, 3))
+    smax = RANSAC_THR / k
+    r = np.linspace(0, RANSAC_THR, 1001)
+    s = np.linspace(smax / 200, smax, 200)
+    g = (s[None, :] ** -3.0) * np.exp(-r[:, None] ** 2 / (2 * s[None, :] ** 2)) * (r[:, None] < k * s[None, :])
+    w = g.mean(1)
+    w = w / w[0]                                                  # IRLS weight, 1 at r = 0
+    rho = np.concatenate([[0.0], np.cumsum(0.5 * (r[1:] * w[1:] + r[:-1] * w[:-1]) * np.diff(r))])   # loss: rho' = r w
+    return r, w, rho
+
+
+def _magsac_eval(res, tab):
+    r, w, rho = tab
+    rc = np.minimum(res, r[-1])
+    return np.interp(rc, r, w) * (res < r[-1]), np.interp(rc, r, rho)    # outliers: zero weight, the maximum loss
+
+
+def _kabsch_w(A, B, w):
+    ws = w / w.sum()
+    ca, cb = ws @ A, ws @ B
+    U, _, Vt = np.linalg.svd(((B - cb) * ws[:, None]).T @ (A - ca))
+    D = np.diag([1, 1, np.sign(np.linalg.det(Vt.T @ U.T))])
+    R = Vt.T @ D @ U.T
+    M = np.eye(4); M[:3, :3] = R; M[:3, 3] = ca - R @ cb
+    return M
+
+
+def magsac(A, B, rng):
+    tab = getattr(magsac, "tab", None)
+    if tab is None or tab[0][-1] != RANSAC_THR:
+        magsac.tab = tab = _magsac_tables()
+    best, best_loss, done = None, np.inf, 0
+    while done < RANSAC_IT:
+        k = min(RANSAC_BATCH, RANSAC_IT - done)
+        idx = np.argpartition(rng.random((k, len(A))), 3, axis=1)[:, :3]
+        Ms = kabsch_batch(A[idx], B[idx])
+        Bm = np.einsum("kij,nj->kni", Ms[:, :3, :3], B) + Ms[:, None, :3, 3]
+        loss = _magsac_eval(np.linalg.norm(A[None] - Bm, axis=2), tab)[1].sum(1)
+        j = int(np.argmin(loss))
+        if loss[j] < best_loss:
+            best, best_loss = Ms[j], loss[j]
+        done += k
+    M = best
+    for _ in range(MAGSAC_IRLS):                                   # sigma-consensus++
+        res = np.linalg.norm(A - (B @ M[:3, :3].T + M[:3, 3]), axis=1)
+        w, _ = _magsac_eval(res, tab)
+        if (w > 0).sum() < MIN_INL:
+            break
+        M = _kabsch_w(A[w > 0], B[w > 0], w[w > 0])
+    inl = np.linalg.norm(A - (B @ M[:3, :3].T + M[:3, 3]), axis=1) < RANSAC_THR
+    if inl.sum() < MIN_INL:
+        return None, inl
+    return M, inl
+
+
 def ransac(A, B, rng):
+    if ROBUST == "magsac":
+        return magsac(A, B, rng)
     best = None
     if RANSAC_CONF is None:
         for _ in range(RANSAC_IT):
