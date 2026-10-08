@@ -359,7 +359,7 @@ def inliers_batch(A, B, M):
 # 2D models.  Hypotheses as RANSAC (3 pairs, Kabsch); each scored by the sigma-marginalised loss instead of the inlier count: the residual's
 # inlier likelihood (chi, 3 DOF) integrated over a noise sigma uniform in (0, sigma_max], sigma_max = RANSAC_THR / k (k = sqrt(chi2_0.99(3)));
 # the best one refined by sigma-consensus++ (IRLS: Kabsch weighted by the marginalised weights, MAGSAC_IRLS times).  Tabulated once.
-ROBUST = "ransac"            # "ransac" (every result before) | "magsac"
+ROBUST = "ransac"            # "ransac" (every result before) | "magsac" (#235) | "gnc" | "multi" (#236)
 MAGSAC_IRLS = 3
 
 
@@ -420,9 +420,72 @@ def magsac(A, B, rng):
     return M, inl
 
 
+# #236: GNC-TLS (Yang et al., RA-L 2020): graduated non-convexity of the truncated least squares cost, weighted Kabsch on all pairs, no
+# sampling (deterministic); truncation RANSAC_THR, mu x GNC_FACTOR per step until the weights are binary.
+GNC_FACTOR, GNC_MAX_IT = 1.4, 100
+
+
+def gnc(A, B, rng=None):
+    c2 = RANSAC_THR ** 2
+    w = np.ones(len(A))
+    M = _kabsch_w(A, B, w)
+    r2 = np.sum((A - (B @ M[:3, :3].T + M[:3, 3])) ** 2, axis=1)
+    mu = max(c2 / max(2 * r2.max() - c2, 1e-9), 1e-6)
+    for _ in range(GNC_MAX_IT):
+        lo, hi = mu / (mu + 1) * c2, (mu + 1) / mu * c2
+        w = np.where(r2 <= lo, 1.0, np.where(r2 >= hi, 0.0, np.sqrt(c2 * mu * (mu + 1) / np.maximum(r2, 1e-12)) - mu))
+        if (w > 0).sum() < 3:
+            return None, r2 < c2
+        M = _kabsch_w(A[w > 0], B[w > 0], w[w > 0])
+        r2 = np.sum((A - (B @ M[:3, :3].T + M[:3, 3])) ** 2, axis=1)
+        if np.all((w == 0) | (w == 1)) and mu > 1:
+            break
+        mu *= GNC_FACTOR
+    inl = r2 < c2
+    if inl.sum() < MIN_INL:
+        return None, inl
+    return kabsch(A[inl], B[inl]), inl
+
+
+# #236: two-model fitting against sensor-fixed patterns (#212 / #227): RANSAC, then RANSAC again on the pairs it left out.  Patterns that
+# move with the sensor (road markings of the car, the rig) are consistent with ZERO motion; the scene with the true one.  When both models
+# are supported (second >= MULTI_MIN_FRAC of the first and >= MIN_INL pairs) and they differ by more than MULTI_MIN_DIFF m, the one that
+# is not ~zero motion (translation < MULTI_ZERO m and rotation < 0.1 deg) is kept.  At rest every pair agrees on zero: one model, no change.
+MULTI_MIN_FRAC, MULTI_MIN_DIFF, MULTI_ZERO = 0.2, 0.1, 0.05
+
+
+def multi_model(A, B, rng):
+    M1, inl1 = _ransac_plain(A, B, rng)
+    if M1 is None:
+        return M1, inl1
+    rest = ~inl1
+    if rest.sum() < max(MIN_INL, MULTI_MIN_FRAC * inl1.sum()):
+        return M1, inl1
+    M2, inl2r = _ransac_plain(A[rest], B[rest], rng)
+    if M2 is None or inl2r.sum() < max(MIN_INL, MULTI_MIN_FRAC * inl1.sum()):
+        return M1, inl1
+    inl2 = np.zeros(len(A), bool); inl2[np.flatnonzero(rest)[inl2r]] = True
+    zero = lambda M: np.linalg.norm(M[:3, 3]) < MULTI_ZERO and np.degrees(np.arccos(np.clip((np.trace(M[:3, :3]) - 1) / 2, -1, 1))) < 0.1
+    if np.linalg.norm(M1[:3, 3] - M2[:3, 3]) < MULTI_MIN_DIFF:
+        return M1, inl1
+    multi_model.n_two = getattr(multi_model, "n_two", 0) + 1
+    if zero(M1) and not zero(M2):
+        multi_model.n_switched = getattr(multi_model, "n_switched", 0) + 1
+        return M2, inl2
+    return M1, inl1
+
+
 def ransac(A, B, rng):
     if ROBUST == "magsac":
         return magsac(A, B, rng)
+    if ROBUST == "gnc":
+        return gnc(A, B, rng)
+    if ROBUST == "multi":
+        return multi_model(A, B, rng)
+    return _ransac_plain(A, B, rng)
+
+
+def _ransac_plain(A, B, rng):
     best = None
     if RANSAC_CONF is None:
         for _ in range(RANSAC_IT):
