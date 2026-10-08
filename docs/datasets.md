@@ -98,5 +98,10 @@ spms: πληρότητα 99 % σε όλα τα runs (και του KISS).
 - **KITTI odometry 07** (#084, #085): οι σαρώσεις του raw / sync είναι **ήδη διορθωμένες** ως προς την κίνηση — ακατάλληλο για δοκιμή deskew. Δεδομένα `Extreme SSD/kitti/`.
 - **Boreas** `boreas-2021-01-26-11-22`, πρώτες 3000 σαρώσεις (311 s, 1.34 km), Velodyne Alpha Prime 128, raw με ring και χρόνο ανά σημείο (#085). Δεδομένα `Extreme SSD/boreas/`, GT
   `gt_boreas-2021-01-26-11-22_lidar_tum.txt` (ανά σάρωση)· runs `kiss_runs_ssd/boreas/2021-01-26-11-22_3000/`· `run_ncd.py ... --last=3000 --intensity-scale=1.0`· `oracle_motion.npz` (#127).
-- **MulRan** (KAIST / Riverside, Ouster OS1-64): λήψη από τον Μ.Τ. (φόρμα αιτήματος, 5/10). Πριν από runs: έλεγχος αν οι σαρώσεις `.bin` (x, y, z, intensity) επιτρέπουν deskew (χρόνος ανά σημείο ή
-  σειρά στηλών 1024 × 64).
+- **Boreas, 8 πλήρεις οδηγήσεις (7/10, #216, #225):** 2020-12-01-13-26, 2021-01-15-12-17, 2021-01-19-15-08, 2021-04-08-12-44, 2021-09-07-09-35, 2021-09-14-20-00, 2021-10-15-12-35, 2021-11-16-14-10
+  (οι «δύσκολες»: χιόνι / βροχή / νύχτα / αυτοκινητόδρομος· ~8 km η καθεμία). Δεδομένα `Extreme SSD/boreas/boreas-<seq>/lidar/*.bin`, GT `gt_boreas-<seq>_lidar_tum.txt` (`scripts/boreas_gt.py`)·
+  runs `kiss_runs_ssd/boreas/<seq>/`· `run_ncd.py ... --intensity-scale=1.0` (χωρίς `--last`). Μεροληψία ανύψωσης δεσμών ~+0.05–0.15° (κοινή σε όλες τις μεθόδους, #219 / #221, `--elev-offset`)·
+  για το paper **χωρίς διόρθωση** (ΑΠΟΦΑΣΗ Μ.Τ. 7/10).
+- **MulRan (7/10, #208–#217, #223):** KAIST01, DCC01 (αστικές), Riverside01, Sejong01 (αυτοκινητόδρομος), Ouster OS1-64 σε όχημα. Δεδομένα `Extreme SSD/mulran/<seq>/` (`Ouster/<ns>.bin` = x, y, z, intensity,
+  πάντα 64 × 1024 στήλη-στήλη: δακτύλιος i % 64, χρόνος στήλη / 1024 × 0.1 s — άρα deskew δυνατό), GT `global_pose.csv` → `gt_lidar_tum.txt` (`scripts/mulran_gt.py`, βαθμονόμηση base → Ouster του KISS-ICP).
+  Reader `kiss_slam/tools/mulran.py` (αναγνώριση από `run_ncd.py` / `run_baseline.py`)· runs `kiss_runs_ssd/mulran/<seq>/`. Η τελευταία σάρωση του KAIST01 είναι κομμένη (#208, χειρίζεται ο reader).

@@ -184,6 +184,13 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 - ~~`kiss-q224` — #224~~ έγινε — MulRan: GenZ-ICP / MAD-ICP (`mulran.cfg`) / CT-ICP (`driving`)· τέλος `q224_FINISHED`
 - ~~`kiss-q225` — #225~~ έγινε (log #225· ανοιχτά: CT-ICP APE ~25 m, σύμβαση χρόνου στο RPE των άλλων μεθόδων) — Boreas χωρίς διόρθωση: Γ (`ral225`), διαμόρφωση οχήματος στη γρήγορη στοίβα (`carfast225`), GenZ / MAD / CT-ICP σε όλες τις 8· τέλος `q225_FINISHED`
 Μετά από επανεκκίνηση της συνεδρίας: `systemctl --user is-active kiss-q22*` — αν όχι ενεργές χωρίς FINISHED, ξανά `systemd-run ... bash ~/kiss_runs/q222/run<n>.sh >> run<n>.log` (παραλείπει τα έτοιμα).
+**Ανοιχτά μετά το #225 (8/10):**
+1. CT-ICP: APE οδομετρίας ~25 m σε όλες τις Boreas παρά τη μικρότερη ολίσθηση — μεροληψία της μεθόδου ή σύμβαση πλαισίου / χρόνου δική μας; (offline)
+2. RPE 1 m των άλλων μεθόδων σταθερά χαμηλότερο (CT-ICP 1.9 / εμείς 2.7 cm Boreas, MulRan 4.2–6.5 / 5.9–8 cm): σύμβαση χρόνου θέσης (#085, #220)· ως τότε στο paper RTE / APE.
+3. Ποιο μέρος της διαμόρφωσης οχήματος βλάπτει τα drone (#222): 2 runs στο rtp_01 (κάθε μέρος μόνο) — αναμένει έγκριση.
+4. Sejong01 πίσω από KISS-SLAM (5.4 / 4.3 %).
+5. Μεγάλο APE του SLAM της Γ στις Boreas 2021-10-15 / 2020-12-01 (κλεισίματα πάνω σε μεροληψία ύψους;).
+
 **Βαθμολόγηση:** `evaluate_official.py <gt_lidar_tum.txt> <runs> --frame=none` (MulRan / Boreas)· οδομετρία των δικών μας / KISS-SLAM με `replay_backend.py <run> none` (+ αντίγραφο `*_poses_tum.txt`)·
 NTU `evaluate_ntu.py`, Spires / NCD `evaluate_official.py` με `official_eval/<seq>/gt_lidar.txt`.
 

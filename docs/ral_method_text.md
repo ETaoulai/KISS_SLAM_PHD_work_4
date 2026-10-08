@@ -75,7 +75,9 @@ Measured alone on one machine (48 cores; #165, #166) **with unrestricted thread 
 OpenCV — capped at 8 —, the KD-tree of the two-start check; KISS's ICP 4 threads) and 1.1–1.2 GB of memory on the handheld sequences, 2.4–2.7 GB on the car.
 The blend and the fallback add no measurable cost (christ-church-03 274 vs 287 s serial, 241 vs 241 s parallel; Boreas 764 vs 774 s serial, #166).
 Handheld, 10 Hz sensors: christ-church-03 (Hesai) 11.4 Hz serial, 12.9 Hz with `--parallel`; quad_easy (Ouster 128) 10.3 Hz with `--parallel` — real time.
-Car (Boreas, Velodyne 128): 3.9 Hz serial, 4.9 Hz parallel — not real time (the 1024 × 1024 panorama of 128 rings × 8 is the likely cost).
+Car (Boreas, Velodyne 128): 3.9 Hz serial, 4.9 Hz parallel with the locked method as is (the 1024 × 1024 panorama of 128 rings × 8 is the main cost).
+Real time on the car is reached by a variant (option, ΑΠΟΦΑΣΗ Μ.Τ. 7/10; #202): panorama ×4 on 128 beams, the image stage in C++, the image computed 4 scans ahead, a range-image
+cache and KISS-ICP without the GIL → 280.9 s for 300 s of driving (1.07×, 11 Hz), accuracy within the seed spread; odometry identical to the locked method on 8 Boreas drives (#225).
 The figures above are with the library defaults (no thread budget). A 4-thread-per-library budget was measured (#168: identical trajectories, 3–8 % slower, still
 6–11 cores) and then removed from the code (ΑΠΟΦΑΣΗ Μ.Τ. 5/10); the paper states the runtime as above, with the measured core count.
 
@@ -83,5 +85,8 @@ The figures above are with the library defaults (no thread budget). A 4-thread-p
 
 - Against the strongest LiDAR-only method, Traj-LO (continuous time), the method is less accurate on most sequences (#162); it is on par with
   GenZ-ICP and CT-ICP and better than DLO and MAD-ICP on most datasets. The claim is a robust, large improvement of KISS-SLAM, not a new state of the art.
-- Height drift on long trajectories (#060, #077, #153), the stair case (#063), and sensors whose intensity image is sparse (Livox, #095–#116; the
+- Car on a highway (MulRan Riverside01 / Sejong01): road markings fixed to the sensor make the image translation ~0 and the locked method fails (RTE 10.0 / 8.3 %); the car
+  configuration (blend also for the ICP start + translation trigger, an option) recovers Riverside01 (3.6 %, = KISS-SLAM) but Sejong01 stays behind KISS-SLAM (5.4 / 4.3 %, #223).
+- On the Boreas drives our odometry beats KISS-SLAM, MAD-ICP and GenZ-ICP but CT-ICP drifts less (RTE 0.37 / 0.40 %); after loop closures KISS-SLAM keeps the lower APE (#225).
+- Height drift on long trajectories (#060, #077, #153; on Boreas a ~+0.1° beam-elevation calibration bias common to all methods, #219 / #221), the stair case (#063), and sensors whose intensity image is sparse (Livox, #095–#116; the
   16-beam NTU Ouster where the image fails at altitude) remain limits.

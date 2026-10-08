@@ -5,7 +5,7 @@
 **Διάβασε ΠΡΩΤΑ το [`docs/STATUS.md`](docs/STATUS.md)**: τι ξέρουμε (συμπεράσματα με
 ημερομηνία), πού στοχεύουμε, τι είναι κλειστό, και λεξιλόγιο. Είναι η σύντομη εικόνα του έργου.
 
-Σύνοψη της πορείας για τον Μ.Τ. (19/9, ενημερωμένη 21/9, 25/9 και 29/9 — §7δ): [`docs/summary_for_MT.md`](docs/summary_for_MT.md).
+Σύνοψη της πορείας για τον Μ.Τ. (19/9, ενημερωμένη 21/9, 25/9, 29/9 — §7δ — και 8/10 — §7ζ): [`docs/summary_for_MT.md`](docs/summary_for_MT.md).
 Το §7β της σύνοψης έχει τα νεότερα ευρήματα (#033–#039) — **πρώτο απ' όλα: το ATE ενός run δεν είναι μετρήσιμο
 μέγεθος** (σ = 0.02–0.04 m), οπότε κάθε σύγκριση γίνεται με RPE/μήκος διαδρομής ή με 4+ runs.
 
@@ -90,7 +90,7 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
   CT-ICP, Traj-LO, FAST-LIO2, COIN-LIO), με pinned commits και patches· `baselines/README.md`.
 - `scripts/evaluate_hilti.py` — επίσημο πρωτόκολλο του Hilti SLAM Challenge 2021 (τροχιά IMU, pole/prism/imu, 1 s, SE(3), APE)· `docs/datasets.md`.
 - `scripts/evaluate_ntu.py` — επίσημο πρωτόκολλο του NTU VIRAL (σώμα + πρίσμα 0.40 m, 0.05 s, SE(3), ATE, πληρότητα)· `docs/datasets.md`. Δέχεται και την παλιά μορφή βαθμονόμησης (rtp / tnp / spms).
-- **Λίστα ακολουθιών:** `kiss_runs/all_seqs.tsv` = 42 (27 + 15 νέες NTU, 4/10)· οι 27 στο `all_seqs_27.tsv`· Boreas (όχημα) χωριστά (`--last=3000 --intensity-scale=1.0`).
+- **Λίστα ακολουθιών:** `kiss_runs/all_seqs.tsv` = 42 (27 + 15 νέες NTU, 4/10)· οι 27 στο `all_seqs_27.tsv`· Boreas (όχημα) χωριστά (`--last=3000 --intensity-scale=1.0`)· από 7/10 και 8 πλήρεις Boreas + 4 MulRan (`docs/datasets.md`, log #216 / #223 / #225).
 - **Επιλογές της μεθόδου από 3/10** (`run_ncd.py`, όλες εκτός προεπιλογής): `--cv-blend=adaptive [--cv-blend-use=deskew|both] [--cv-blend-part=rotation]` (#131/#137), `--fallback=kiss [--fallback-after=N]`
   (#146/#150), `--multi-baseline[=translation]` (#130/#131), `--fuse-range[=weak]` (#132/#152), `--drop-stationary` (#132), `--sectors=8 [--sectors-part=rotation]` (#093/#135), `--cv-winner-deskew` (#163).
 - Διαγνωστικά offline (#126–#131): `scripts/score_motion_gyro.py`, `score_blend_gyro.py`, `analyse_gated_deskew.py`, `analyse_degenerate_image.py`, `analyse_icp_failure_detector.py`,
