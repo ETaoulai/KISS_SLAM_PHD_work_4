@@ -58,6 +58,29 @@ LiDAR→IMU επιβεβαιώνεται από τη στροφή (με βαθμ
 python scripts/evaluate_hilti.py /home/photogrammetry/kiss_data/hilti_2021/<seq>/ground_truth/<seq>_<pole|prism|imu>.txt <run dir> --out=<dir>
 ```
 
+## Hilti 2021 (όλες οι 12) και 2022 (όλες οι 16) — λήψη 8/10, αξιολόγηση (#238)
+
+Λήψη (Μ.Τ. 8/10: όσες έχουν GT — όλες έχουν) από Hugging Face `Hilti-Research/hilti-slam-challenge-2021` / `-2022` (ανοιχτά, χωρίς σύνδεση) στον εξωτερικό SSD:
+`Extreme SSD/hilti_2021/<seq>/{rosbag,ground_truth}/` (οι 6 που έλειπαν: Basement_3, Basement_4, Campus_1, Campus_2, Construction_Site_2 — prism· Parking_1 — pole· 138 GB) και
+`Extreme SSD/hilti_2022/<exp>/{rosbag,ground_truth}/` (exp01–07, 09–11, 14–16, 18, 21, 23 σε 3 τμήματα· 336 GB) + `hilti_2022/calibration/lidar_calibration.yaml`, `README.md`.
+Μονάδα `kiss-hiltidl` (`kiss_runs/hilti_dl/dl.sh`, συνέχιση / παράλειψη ολοκληρωμένων, έλεγχος μεγέθους)· οι 6 παλιές του 2021 μένουν στο `kiss_data/hilti_2021/`. Για χώρο σβήστηκαν
+τα σημεία του KITTI (όλα ήδη διορθωμένα ως προς την κίνηση, #085 / #207: odometry velodyne 85 GB, raw 0027 sync / extract 16 GB)· κρατήθηκαν GT / poses / calib (25 MB).
+
+**2022, αισθητήρας:** Hesai PandarXT-32, `/hesai/pandar`, πεδία x y z intensity (float) timestamp (float64, απόλυτος) ring (uint16), πλαίσιο `PandarXT-32` — η ίδια μορφή με το Spires
+(`--topic=/hesai/pandar --intensity-scale=1.0`)· IMU `/alphasense/imu`, 5 κάμερες. LiDAR → IMU: `lidar_calibration.yaml` (quaternion **x, y, z, w** — ελέγχθηκε: το κάθετο του δαπέδου στο LiDAR,
+στο πλαίσιο του IMU, απέχει 0.6° από τη βαρύτητα του IMU· η ανάγνωση w, x, y, z θα έδινε 91°).
+
+**2022, επίσημη αξιολόγηση** (`scripts/evaluate_hilti2022.py`, αναπαράγει `evaluation-2022/evaluation.py` + `batch_evaluation.py` του github Hilti-Research/hilti-slam-challenge-2022, αντίγραφα
+στο `kiss_data/hilti_2022_eval/`): τροχιά του IMU (TUM)· × T_imu_ref = ταυτοτικός για `*_imu.txt`, αλλιώς η άκρη μέτρησης (0.059, −0.00855, 0.1964) m — **και για τα `*_imu_3dof.txt`** (όπως το
+επίσημο· ελέγχθηκε στο exp14: το πυκνό `_imu` με την άκρη πέφτει πάνω στα σημεία του `_imu_3dof`, άρα είναι θέσεις της άκρης)· αντιστοίχιση **2 s**· SE(3)· APE θέσης· **σκορ** ανά σημείο ελέγχου
+10 / 6 / 3 / 1 / 0 για σφάλμα < 1 / 3 / 6 / 10 cm / περισσότερο, κανονικοποιημένο σε 0–100 ανά ακολουθία (exp04–06 εκτός επίσημου συνόλου)· πληρότητα. Έλεγχος: ίδια APE με το επίσημο script ως το
+9ο δεκαδικό (exp14, `_imu` και `_imu_3dof`). GT: σποραδικά σημεία ελέγχου για όλες· πυκνή τροχιά IMU μόνο exp14 / 16 / 18.
+**2021:** `scripts/evaluate_hilti.py` (ήδη, 25/9: αντιστοίχιση 1 s, pole / prism / imu).
+
+```bash
+python scripts/evaluate_hilti2022.py "/media/photogrammetry/Extreme SSD/hilti_2022/<exp>/ground_truth/<exp>.txt" <run dir> --out=<dir>
+```
+
 ## NTU VIRAL: επίσημη αξιολόγηση (`scripts/evaluate_ntu.py`, 25/9)
 Αναπαράγει το `ntuviral_evaluate.ipynb` του tutorial (ntu-aris.github.io/ntu_viral_dataset/evaluation_tutorial.html): τροχιά του **σώματος**
 (= IMU) εντός του χρόνου του GT, + μετατόπιση **σώμα → πρίσμα (−0.294, −0.012, −0.273) m = 0.40 m** («πολλοί χρήστες ξεχνούν» τη, κατά τη
