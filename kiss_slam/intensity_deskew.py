@@ -583,6 +583,10 @@ def make_detector(detector="sift", surf_hessian=100.0, surf_upright=False):
         return x.AKAZE_create(descriptor_type=x.AKAZE_DESCRIPTOR_MLDB_UPRIGHT, threshold=AKAZE_THRESHOLD)
     if detector == "klt1d":                                # #230: no descriptors - 1D Lucas-Kanade flow along each ring (KLT1D_* below)
         return Klt1dDetector()
+    if detector == "klt2d":                                # #231: no descriptors - 2D pyramidal Lucas-Kanade (OpenCV) on the panorama
+        return Klt2dDetector()
+    if detector == "uorb":                                 # #231: upright ORB - FAST + BRIEF with the orientation forced to 0 (panorama never rotates)
+        return UprightOrb(cv2.ORB_create(nfeatures=ORB_FEATURES, scaleFactor=1.2, nlevels=8, edgeThreshold=15, patchSize=15, fastThreshold=10))
     raise ValueError(f"unknown detector {detector!r}: 'sift', 'surf', 'orb', 'akaze' or 'klt1d'")
 
 
@@ -615,6 +619,62 @@ class Klt1dDetector:
         ok[:1] = False; ok[-1:] = False                                      # no first / last row (half-pixel rows of the lookup)
         kps = [cv2.KeyPoint(float(c), float(r), 1.0, -1, float(v)) for r, c, v in zip(rows[ok], cols[ok], val[ok])]
         return kps, np.zeros((len(kps), 1), np.float32)
+
+
+class UprightOrb:
+    """#231: ORB keypoints (FAST, Harris-ranked, pyramid) with angle 0, then rBRIEF computed unrotated - as upright SURF (#086)."""
+
+    def __init__(self, orb):
+        self.orb = orb
+
+    def detectAndCompute(self, img, mask=None):
+        kps = self.orb.detect(img, None)
+        kps = [cv2.KeyPoint(k.pt[0], k.pt[1], k.size, 0.0, k.response, k.octave, k.class_id) for k in kps]
+        return self.orb.compute(img, kps)
+
+
+# #231: 2D KLT - corners (Shi-Tomasi) of the panorama tracked with OpenCV's pyramidal Lucas-Kanade from the predicted shift, the image
+# padded with KLT2D_PAD wrapped columns on both sides (the panorama is a full turn); forward-backward check KLT2D_FB px.
+KLT2D_MAX, KLT2D_QUALITY, KLT2D_MIN_DIST, KLT2D_WIN, KLT2D_LEVELS, KLT2D_FB, KLT2D_PAD = 3000, 0.005, 5, 21, 3, 0.5, 64
+
+
+class Klt2dDetector:
+    def detectAndCompute(self, img, mask=None):
+        c = cv2.goodFeaturesToTrack(img, KLT2D_MAX, KLT2D_QUALITY, KLT2D_MIN_DIST, blockSize=5)
+        c = np.zeros((0, 2), np.float32) if c is None else c.reshape(-1, 2)
+        kps = [cv2.KeyPoint(float(x), float(y), 1.0) for x, y in c]
+        return kps, np.zeros((len(kps), 1), np.float32)
+
+
+def klt2d_matches(f1, f2, shift=0.0, centres=None):
+    """#231: (xy1, xy2) pixel pairs f1 -> f2 by 2D pyramidal LK (cv2.calcOpticalFlowPyrLK) with a forward-backward check."""
+    kp1 = f1[3]
+    I1, I2 = f1[6], f2[6]
+    if len(kp1) == 0 or I1.shape != I2.shape:
+        klt1d_matches.last = (len(kp1), 0)
+        return np.zeros((0, 2)), np.zeros((0, 2))
+    pad = lambda I: np.ascontiguousarray(np.concatenate([I[:, -KLT2D_PAD:], I, I[:, :KLT2D_PAD]], axis=1))
+    A, B = pad(I1), pad(I2)
+    xy = np.array([k.pt for k in kp1], np.float32)
+    x0 = xy[:, 0] + shift
+    if centres is not None:
+        pred, okp = centres
+        x0 = np.where(okp, pred[:, 0], x0)
+    x0 = xy[:, 0] + ((x0 - xy[:, 0] + W / 2) % W - W / 2)
+    y0 = xy[:, 1] if centres is None else np.where(centres[1], centres[0][:, 1], xy[:, 1])
+    p1 = np.column_stack([xy[:, 0] + KLT2D_PAD, xy[:, 1]]).astype(np.float32).reshape(-1, 1, 2)
+    g2 = np.column_stack([x0 % W + KLT2D_PAD, y0]).astype(np.float32).reshape(-1, 1, 2)
+    crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, 0.01)
+    p2, st, _ = cv2.calcOpticalFlowPyrLK(A, B, p1, g2.copy(), winSize=(KLT2D_WIN, KLT2D_WIN), maxLevel=KLT2D_LEVELS,
+                                         criteria=crit, flags=cv2.OPTFLOW_USE_INITIAL_FLOW)
+    pb, stb, _ = cv2.calcOpticalFlowPyrLK(B, A, p2, p1.copy(), winSize=(KLT2D_WIN, KLT2D_WIN), maxLevel=KLT2D_LEVELS,
+                                          criteria=crit, flags=cv2.OPTFLOW_USE_INITIAL_FLOW)
+    p2, pb = p2.reshape(-1, 2), pb.reshape(-1, 2)
+    fb = np.linalg.norm(pb - p1.reshape(-1, 2), axis=1)
+    good = (st.ravel() == 1) & (stb.ravel() == 1) & (fb < KLT2D_FB) & (p2[:, 1] >= 0) & (p2[:, 1] <= I2.shape[0] - 1)
+    klt1d_matches.last = (len(xy), int(good.sum()))
+    xy2 = np.column_stack([(p2[good, 0] - KLT2D_PAD) % W, p2[good, 1]])
+    return xy[good].astype(np.float64), xy2.astype(np.float64)
 
 
 def _row_sample(I, r, x):
@@ -695,7 +755,7 @@ AKAZE_THRESHOLD = 0.001                                    # #181: OpenCV defaul
 DETECT_SCALE = 1.0
 
 
-KLT1D_ACTIVE = False   # #230: set by ScanMotionEstimator(detector='klt1d')
+KLT1D_ACTIVE, KLT_MODE = False, "1d"   # #230 / #231: set by ScanMotionEstimator(detector='klt1d' / 'klt2d')
 
 
 KP_GRID = None    # #199: (cell px, n) - keep at most the n strongest keypoints per cell x cell block of the panorama (even spread); None = all
@@ -945,7 +1005,7 @@ def match_motion(f1, f2, period, rng, bf, model="cv", subpixel=False,
         fast = abs(GUIDED_SHIFT) > _px(GUIDED_MAX_SHIFT)
         use_motion = GUIDED_PREDICTION == "motion" or (GUIDED_PREDICTION == "hybrid" and fast)
         centres = predict_pixels(f1, f2, GUIDED_PRED_MOTION) if (use_motion and GUIDED_PRED_MOTION is not None) else None
-        xy1, xy2 = klt1d_matches(f1, f2, GUIDED_SHIFT, centres)
+        xy1, xy2 = (klt2d_matches if KLT_MODE == "2d" else klt1d_matches)(f1, f2, GUIDED_SHIFT, centres)
         if len(xy1) >= GUIDED_MIN_MATCHES:
             dx = xy2[:, 0] - xy1[:, 0]
             GUIDED_SHIFT = float(np.median((dx + W / 2) % W - W / 2))
@@ -1155,9 +1215,10 @@ class ScanMotionEstimator:
         self.stuck_min, self.floor_only, self.elev, self.range_ = stuck_min, floor_only, elev, range_
         self.detector_name = detector
         self.detector = make_detector(detector, surf_hessian, surf_upright)
-        global KLT1D_ACTIVE
-        KLT1D_ACTIVE = detector == "klt1d"
-        self.bf = cv2.BFMatcher(cv2.NORM_HAMMING if detector in ("orb", "akaze") else cv2.NORM_L2)   # #088 / #181: ORB, AKAZE binary
+        global KLT1D_ACTIVE, KLT_MODE
+        KLT1D_ACTIVE = detector in ("klt1d", "klt2d")
+        KLT_MODE = "2d" if detector == "klt2d" else "1d"
+        self.bf = cv2.BFMatcher(cv2.NORM_HAMMING if detector in ("orb", "akaze", "uorb") else cv2.NORM_L2)   # #088 / #181: ORB, AKAZE binary
         self.range_bf = cv2.BFMatcher(cv2.NORM_L2)          # #181: the range panorama always uses SURF (float descriptors)
         self.rng = np.random.default_rng(seed)
         self.prev = None
