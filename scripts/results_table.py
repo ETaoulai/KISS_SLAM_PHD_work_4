@@ -173,7 +173,8 @@ ARMS = {"kissncd": "KISS-SLAM, kiss_icp NCD loader", "kissnodeskew": "KISS-SLAM,
         "kiss228": "KISS-SLAM (new Oxford Spires sequences, #228 / #229)",
         "klt230": "locked method C with 1D KLT flow on the native panorama (no upscaling) instead of SURF (#230)",
         "klt2d231": "locked method C with 2D pyramidal KLT flow (Shi-Tomasi corners) instead of SURF (#231)",
-        "uorb231": "locked method C with upright ORB instead of SURF (#231)"}
+        "uorb231": "locked method C with upright ORB instead of SURF (#231)",
+        "cub234": "locked method C with the cubic motion model (rotation and translation, #234)"}
 # The arms compared from 25/9 on (decision M.T.): no indoor_detail, no ablations (rotation smoothed, translation only, ...).
 MAIN_ARMS = ["kiss", "kissnodeskew", "sift", "surf", "surftwo", "surftwom2", "surftwom4"]
 if "--all-arms" not in sys.argv:

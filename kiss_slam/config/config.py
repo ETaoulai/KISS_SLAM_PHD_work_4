@@ -131,7 +131,7 @@ class ImageDeskewConfig(BaseModel):
     enabled: bool = False
     # Motion model over the two scans: constant velocity, acceleration in rotation only
     # (#021, default), constant acceleration in rotation and translation (#020).
-    model: Literal["cv", "car", "ca"] = "car"
+    model: Literal["cv", "car", "ca", "cub"] = "car"   # "cub" #234: cubic rotation and translation
     # Bilinear interpolation of point and time inside the pixel (#021).
     subpixel: bool = True
     # Features matched between the two panoramas: "sift" (every result so far) or "surf".

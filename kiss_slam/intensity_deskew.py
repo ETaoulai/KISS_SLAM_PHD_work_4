@@ -392,8 +392,11 @@ def pose_at(x, t):
     rot, tr = t[:, None] * w, t[:, None] * v
     if len(x) >= 9:                                        # "car" and "ca": angular acceleration
         rot = rot + 0.5 * t[:, None] ** 2 * x[6:9]
-    if len(x) == 12:                                       # "ca": linear acceleration
+    if len(x) >= 12:                                       # "ca": linear acceleration
         tr = tr + 0.5 * t[:, None] ** 2 * x[9:12]
+    if len(x) == 18:                                       # #234 "cub": angular and linear jerk (cubic in time)
+        rot = rot + t[:, None] ** 3 / 6.0 * x[12:15]
+        tr = tr + t[:, None] ** 3 / 6.0 * x[15:18]
     return rot, tr
 
 
@@ -452,8 +455,11 @@ def residual_jac(x, p, tp, q, tq):
         J[:, :, 3:6] += sign * t[:, None, None] * np.eye(3)        # v
         if len(x) >= 9:
             J[:, :, 6:9] += D * (0.5 * t ** 2)[:, None, None]      # alpha
-        if len(x) == 12:
+        if len(x) >= 12:
             J[:, :, 9:12] += sign * (0.5 * t ** 2)[:, None, None] * np.eye(3)   # a
+        if len(x) == 18:                                           # #234: jerks
+            J[:, :, 12:15] += D * (t ** 3 / 6.0)[:, None, None]
+            J[:, :, 15:18] += sign * (t ** 3 / 6.0)[:, None, None] * np.eye(3)
     return J.reshape(-1, len(x))
 
 
@@ -525,7 +531,7 @@ def fit_time(p, tp, q, tq, M0, model="cv"):
     """Motion over the later scan, pose(1), using each point's time → (4x4, inliers)."""
     x = np.concatenate([Rotation.from_matrix(M0[:3, :3]).as_rotvec(), M0[:3, 3]])
     keep = np.ones(len(p), bool)
-    extra = {"cv": 0, "car": 3, "ca": 6}[model]
+    extra = {"cv": 0, "car": 3, "ca": 6, "cub": 12}[model]
     for stage in (["cv"] if model == "cv" else ["cv", model]):
         if stage != "cv":
             x = np.concatenate([x, np.zeros(extra)])    # start from the constant-velocity solution
