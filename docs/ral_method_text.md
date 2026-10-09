@@ -98,8 +98,8 @@ Hilti 2022 (hand-held Hesai XT-32, construction sites, stairs, corridors, cupola
 complete (1.90 m; MAD-ICP 1.93, GenZ-ICP 2.36, KISS-SLAM 4.9, CT-ICP 7.75) and the best mean rank (tied with MAD-ICP), and it is the only one that never collapses;
 MAD-ICP and GenZ-ICP win more single sequences (GenZ-ICP 5 cm on the corridors exp07 / exp14) but fail elsewhere (MAD-ICP 19.7 m on exp01 and a crash on exp23, GenZ-ICP
 2.7 km on exp09 and two out-of-memory runs); Traj-LO diverges with its authors' Hesai configuration. All LiDAR-only methods stay at metres - the challenge score
-(points below 10 cm) is ~0 except exp01. Hilti 2021 (Ouster): where the geometry suffices every method reaches 4-8 cm; GenZ-ICP and Traj-LO are best (0.15 m geometric
-mean), C 0.20, KISS-SLAM 0.37.
+(points below 10 cm) is ~0 except exp01. Hilti 2021 (Ouster, all 12, #241): every recent LiDAR-only method reaches 2-8 cm where the geometry suffices; geometric-mean APE GenZ-ICP 0.102 m, C 0.136,
+CT-ICP 0.145, MAD-ICP 0.248, Traj-LO 0.261 (best on 7 / 12 but one divergence), KISS-SLAM 0.381 - C closes KISS-SLAM's failures (IC_Office_1 6.3 -> 0.07 m) but is not the most accurate there.
 
 ## Limits (to state in the paper)
 
