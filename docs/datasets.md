@@ -1,4 +1,21 @@
-# Δεδομένα για δοκιμές — τι υπάρχει, πού, τι λείπει (25/9/2026)
+# Δεδομένα για δοκιμές — τι υπάρχει, πού, τι λείπει (25/9/2026· επισκόπηση 9/10)
+
+## Επισκόπηση (9/10/2026)
+
+| dataset | ακολουθίες με GT | αισθητήρας | πλατφόρμα | πού | λίστα runs | αξιολόγηση | αποτελέσματα |
+|---|---|---|---|---|---|---|---|
+| Newer College 2020 | 3 (01_short, 02_long, dynamic_spinning) | Ouster OS1-64 | φορητή | NTFS / `kiss_data/newer_college` | `all_seqs.tsv` | `evaluate_official.py` (ncd2020) | results §1 |
+| Newer College 2021 | 9 (με το stairs) | Ouster OS0-128 | φορητή | NTFS | `all_seqs.tsv` | `evaluate_official.py` (ncd2021) | results §1 |
+| Oxford Spires | 13 | Hesai QT64 | φορητή | NTFS (6) + `Extreme SSD/oxford_spires` (7) | `all_seqs.tsv` + `spires_new.tsv` | `evaluate_official.py` (spires) | results §1, §2 |
+| Hilti 2021 | 12 | Ouster OS0-64 | φορητή | `kiss_data/hilti_2021` (6) + `Extreme SSD/hilti_2021` (6) | `all_seqs.tsv` + `hilti_new.tsv` | `evaluate_hilti.py` | results §3 |
+| Hilti 2022 | 16 | Hesai PandarXT-32 | φορητή | `Extreme SSD/hilti_2022` | `hilti_new.tsv` | `evaluate_hilti2022.py` | results §3 |
+| NTU VIRAL | 18 | Ouster OS1-16 (×2) | drone | `kiss_data/ntu_viral` | `all_seqs.tsv` | `evaluate_ntu.py` | results §1, §5 |
+| Boreas | 9 (8 πλήρεις + 3000 σαρώσεις) | Velodyne Alpha Prime 128 | όχημα | `Extreme SSD/boreas` | `--intensity-scale=1.0` | `evaluate_official.py` (none) | results §1, §4.1 |
+| MulRan | 4 | Ouster OS1-64 | όχημα | `Extreme SSD/mulran` | – | `evaluate_official.py` (none) | results §4.2 |
+| KITTI | (07) | Velodyne HDL-64 | όχημα | σβήστηκε 8/10 (ήδη διορθωμένο ως προς την κίνηση) | – | – | results §4.3 |
+| TIERS / Hard PCL Loc. | 2 | Livox Avia / Horizon / Mid-360 | φορητή | `Extreme SSD/kiss_data_ssd` | – | `evaluate_tiers.py` | results §7 |
+
+Σύνολο για το paper (περιστρεφόμενοι): NCD 12, Spires 13, Hilti 28, NTU 18, Boreas 9, MulRan 4 = **84 ακολουθίες**. Λεπτομέρειες ανά dataset παρακάτω.
 
 Τα αρχεία μένουν όπου κατέβηκαν, στον δίσκο δεδομένων (NTFS, `/media/photogrammetry/A26C3DDF6C3DAF431/data/`, **μόνο ανάγνωση**, #046).
 Η οργάνωση είναι **δέντρο συνδέσμων στο ext4**: `/home/photogrammetry/kiss_data/` — καμία εγγραφή στον NTFS, αναστρέψιμο, και ο reader

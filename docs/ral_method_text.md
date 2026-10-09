@@ -1,7 +1,7 @@
 # The locked RA-L method (branch `ral_method`, 5/10/2026) — draft text for the paper
 
 Draft in English for the paper; every claim points to the experiment log entry that supports it. Numbers: official protocols of each dataset,
-mean of 4 seeds (KISS-SLAM and the other methods: 1 run); ablation in `docs/ablation_165.md`, all methods in `docs/results_summary_164.md`.
+mean of 4 seeds (KISS-SLAM and the other methods: 1 run); ablation in `docs/ablations.md`, all methods in `docs/results.md`.
 
 ## Overview
 

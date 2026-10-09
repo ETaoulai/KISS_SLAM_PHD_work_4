@@ -31,7 +31,7 @@
 
 - **Καλύτερη μία ρύθμιση ως τώρα (#079):** δύο αρχές + gain + εφεδρεία + βάρος 100 → έναντι «χωρίς deskew» 23–3 στις 27 ακολουθίες
   (−39.5 %, p < 0.0001), έναντι KISS 26–1. **Πρόταση (όχι απόφαση):** ασφαλής πυρήνας = εφεδρεία + βάρος 100· gain μόνο για σκοτεινούς
-  αισθητήρες (Hilti). Πίνακας επιλογών: `docs/image_options_2026-09-29.md`.
+  αισθητήρες (Hilti). Πίνακας επιλογών: `docs/ablations.md`.
 - **Ταχύτητα — ΔΙΟΡΘΩΣΗ 2/10 (#086):** τα 32 / 6 / 26 Hz του #080 ήταν η «Average Frequency» του pipeline, που μετρά μόνο τον ICP· η κίνηση
   της εικόνας (σε χωριστή διεργασία) παίρνει ~110 ms / σάρωση στο church_03 (~160 στο math_easy). **Πραγματικά ~8 Hz στο church_03** (400 σαρώσεις,
   `--parallel`, αδρανές μηχάνημα) — κάτω από τα 10 Hz του αισθητήρα. Upright SURF: −30 % χρόνος (#086).
@@ -39,7 +39,7 @@
   `evaluate_hilti.py`, `evaluate_ntu.py`· σύγκριση `compare_arms.py` (Wilcoxon). 27 ακολουθίες: `docs/datasets.md`.
 - **Runs / πίνακες:** `/home/photogrammetry/kiss_runs/` (ext4)· πίνακες `docs/results_official*.md`· odometry μόνο (χωρίς κλεισίματα):
   `scripts/replay_backend.py <run> none` (αναπαράγει τα runs στα 1–3 mm).
-- **Εικόνα για συζήτηση:** `docs/where_we_stand_2026-09-28.md` (προβλήματα και λύσεις), `docs/summary_for_MT.md` §7δ (25–29/9).
+- **Εικόνα για συζήτηση:** `docs/summary_for_LG.md` (σύνοψη για συζήτηση), `docs/summary_for_MT.md` §7δ (25–29/9).
 
 ---
 
@@ -149,13 +149,13 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 ## Δ. Δημοσίευση (STATUS §3)
 
 - **Σύγκριση με άλλες μεθόδους — έγινε (#083, 1/10):** GenZ-ICP, MAD-ICP, CT-ICP, Traj-LO, και με IMU FAST-LIO2, COIN-LIO, στις 27 με τα
-  επίσημα πρωτόκολλα (+ RTE / RRE). Σύνοψη: `docs/summary_for_LG_2026-10-01.md` (+ `docs/summary_for_LG_2026-10-02.md`: κλάδος `rotation_bearing`, #084–#091)· **εκκρεμεί απόφαση για το πλαίσιο του paper** (§Γ).
+  επίσημα πρωτόκολλα (+ RTE / RRE). Σύνοψη: `docs/summary_for_LG.md` (+ `docs/summary_for_LG.md`: κλάδος `rotation_bearing`, #084–#091)· **εκκρεμεί απόφαση για το πλαίσιο του paper** (§Γ).
 - **Ablation — έγινε (#081, 30/9):** φίλτρο δαπέδου, σ σταθερό / προσαρμοστικό, αρχή του ICP από την εικόνα / σταθερή ταχύτητα, έναντι της μεθόδου
-  (27 × 4)· μαζί με δύο αρχές on–off (#059), εφεδρεία / gain / βάρος (#069–#079). Πίνακας `docs/results_ablation_081.md`.
+  (27 × 4)· μαζί με δύο αρχές on–off (#059), εφεδρεία / gain / βάρος (#069–#079). Πίνακας `docs/ablations.md`.
 - **Ευκρίνεια χάρτη** (#048–#051): 4 ακολουθίες, 1 σπόρος — επέκταση σε 4 σπόρους αν μπει.
 - **Πραγματικός χρόνος:** μετρήθηκε σε desktop (#080)· λείπει laptop. **#093:** με το πανόραμα από τον αισθητήρα (`--panorama-width=auto --panorama-up=auto`)
   22 / 17 Hz (christ-church-03 / math_easy) έναντι 12.9 / 10.3 — προς απόφαση Μ.Τ. ως προεπιλογή· πλήρη runs Hesai / Hilti / NTU / OS1-64 εκκρεμούν.
-- **Κείμενα έτοιμα για χρήση:** `docs/method_description.md` (μέθοδος), `docs/review_prompt_registration_deskew.md` (θεωρητικός έλεγχος από ειδικό).
+- **Κείμενα έτοιμα για χρήση:** `docs/method_description.md` (μέθοδος), `docs/results.md`, `docs/ablations.md` (θεωρητικός έλεγχος από ειδικό).
 
 ---
 
@@ -168,6 +168,8 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 - Γιατί το christ-church-03 τρέχει 3× πιο αργά (#031)· το KD-tree του ελέγχου των δύο αρχών (δική μας προσθήκη, βλ. CLAUDE.md).
 - Πρόσβαση του Μ.Τ. στο GitHub (`ETaoulai/KISS_SLAM_PHD_work_3`, private — το κύριο αποθετήριο από 29/9).
 
+
+**Docs (9/10):** βασικά = CLAUDE / STATUS / open_tasks / experiment_log / method_description / ral_method_text / summary_for_MT· ενοποιημένα = `results.md`, `ablations.md`, `summary_for_LG.md`, `datasets.md` — κάθε νέο αποτέλεσμα: log → STATUS → η αντίστοιχη ενότητα του `results.md` / `ablations.md`.
 
 ## 9/10: Hilti 2021 + 2022 — log #238–#240 (κλάδος `matching_intensities`)
 
@@ -301,5 +303,5 @@ MulRan (όχημα, λήψη από τον Μ.Τ.).
 2. 15 νέες NTU: για κάθε `q` `python scripts/evaluate_ntu.py $q $E/kiss_s0 $E/base092_s{0..3} $E/bd137_s{0..3} $E/bf148_s{0..3} $E/bfc150_s{0..3} --out=<scratch>` (E = `kiss_runs_ssd/ntu_viral/$q`),
    έξοδος ως `n149_<q>.txt` (γραμμές «q run ATE …»).
 3. Boreas: `python scripts/evaluate_official.py "/media/photogrammetry/Extreme SSD/boreas/gt_boreas-2021-01-26-11-22_lidar_tum.txt" <runs …> --frame=none` (στήλες run, APE, RPE t, RPE r).
-4. Συνολικός πίνακας: `python scripts/summary_table_162.py <csv του 1> <φάκελος των n149_*.txt> <boreas 4 στήλες> docs/results_summary_164.md` (περιέχει τον Γ).
+4. Συνολικός πίνακας: `python scripts/summary_table_162.py <csv του 1> <φάκελος των n149_*.txt> <boreas 4 στήλες> docs/results.md` (περιέχει τον Γ).
 5. Αναφορά με πίνακα (ATE + RTE) και εξήγηση· STATUS → log (#164)· μετά: απόφαση Β / Γ (Μ.Τ.) → νέος κλάδος με κλειδωμένη μέθοδο → ablation → κείμενο → χρόνοι → MulRan.

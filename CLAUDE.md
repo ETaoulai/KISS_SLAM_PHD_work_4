@@ -11,8 +11,17 @@
 
 **Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 9/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
 
-**Η μέθοδος αναλυτικά (εξισώσεις, κάθε επιλογή με την εγγραφή της): [`docs/method_description.md`](docs/method_description.md).** Ερώτημα
-θεωρητικής αξιολόγησης για ειδικό: [`docs/review_prompt_registration_deskew.md`](docs/review_prompt_registration_deskew.md).
+**Η μέθοδος αναλυτικά (εξισώσεις, κάθε επιλογή με την εγγραφή της): [`docs/method_description.md`](docs/method_description.md).**
+
+**Δομή των docs (καθαρισμός 9/10, σχέδιο Μ.Τ.):**
+- **Βασικά — ενημερώνονται σε κάθε βήμα:** `CLAUDE.md`, `docs/STATUS.md`, `docs/open_tasks.md`, `docs/experiment_log.md`, `docs/method_description.md`,
+  `docs/ral_method_text.md` (κείμενο για το paper), `docs/summary_for_MT.md`.
+- **Ενοποιημένα — ενημερώνονται όταν κλείνει ένα αποτέλεσμα:** [`docs/results.md`](docs/results.md) (ΟΛΑ τα αποτελέσματα, όλα τα datasets / μέθοδοι, με ημερομηνία,
+  log και σύνοψη ανά ενότητα) · [`docs/ablations.md`](docs/ablations.md) (όλα τα ablations και οι δοκιμές επιλογών) · [`docs/summary_for_LG.md`](docs/summary_for_LG.md)
+  (σύνοψη για τον Λ.Γ.) · [`docs/datasets.md`](docs/datasets.md) (δεδομένα, αισθητήρες, πρωτόκολλα αξιολόγησης).
+- **Αναφορά:** `docs/literature_i3.md` (βιβλιογραφία), `docs/figures/`.
+- Τα παλιά (`results_summary_16x`, `results_official*`, `results_all*`, `ablation_165`, `results_ablation_081`, `image_options_*`, `summary_for_LG_*`,
+  `where_we_stand_*`, `review_prompt_*`, `map_sharpness*`, `comparisons_*`) **αφαιρέθηκαν 9/10** — συγχωνεύτηκαν στα παραπάνω· στο ιστορικό του git.
 
 Μετά το [`docs/experiment_log.md`](docs/experiment_log.md), που περιέχει:
 - τον **Οδηγό εκτέλεσης** (πού/πώς τρέχει το pipeline, όλες οι CLI παράμετροι & config),
@@ -20,7 +29,7 @@
 
 **Σειρά γραφής όταν κλείνει ένα πείραμα ή παίρνεται απόφαση:** πρώτα μία–τρεις γραμμές με
 ημερομηνία στο `STATUS.md` (σε απλά λόγια, νούμερα σε παρένθεση), μετά η πλήρης εγγραφή στο
-log. Ένα σημείο ανά είδος πληροφορίας — μην αντιγράφεις ολόκληρα συμπεράσματα σε δύο αρχεία.
+log, και τέλος ο πίνακας στην αντίστοιχη ενότητα του `docs/results.md` (ή `docs/ablations.md` για ablation / επιλογή). Ένα σημείο ανά είδος πληροφορίας — μην αντιγράφεις ολόκληρα συμπεράσματα σε δύο αρχεία.
 
 Συμπεράσματα παίρνουν ✅ μόνο μετά από ρητή επικύρωση του Λ.Γ., με αρχικά και ημερομηνία
 («✅ Λ.Γ. 18/9»)· αλλιώς ⏳. Αποφάσεις και ιδέες του Λ.Γ. καταγράφονται ως «ΑΠΟΦΑΣΗ Λ.Γ.» / «Ιδέα Λ.Γ.».
@@ -79,10 +88,10 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
 - **ΚΛΕΙΔΩΜΕΝΗ ΜΕΘΟΔΟΣ ΓΙΑ ΤΟ RA-L (ΑΠΟΦΑΣΗ Μ.Τ. 5/10): κλάδος `ral_method`** (από `after_091`) — η επιλογή Γ είναι η **προεπιλογή του config**: SURF, δύο αρχές (5°), εφεδρεία εικόνας
   απόστασης, ανάμειξη για το deskew, εφεδρεία KISS από την 4η συνεχόμενη αποτυχία, σ = 2.0· εντολή: `run_ncd.py surf <src> <out> --seed=<s> --config=<threads4.yaml> [--parallel]` χωρίς άλλες επιλογές.
   **Προσοχή:** ο κύριος checkout είναι σε αυτόν τον κλάδο και το editable install τον φορτώνει — κάθε run από εδώ τρέχει τη Γ· οι παλιοί βραχίονες με ρητές επιλογές
-  (`--cv-blend=off --fallback=identity --fallback-after=1 --range=none` για την πριν από το #092 συμπεριφορά χωρίς εφεδρεία απόστασης). Ablation: `docs/ablation_165.md` (`scripts/ablation_table_165.py`).
+  (`--cv-blend=off --fallback=identity --fallback-after=1 --range=none` για την πριν από το #092 συμπεριφορά χωρίς εφεδρεία απόστασης). Ablation: `docs/ablations.md` (`scripts/ablation_table_165.py`).
 - **Μέθοδος (πριν το κλείδωμα):** η προεπιλογή του `after_091` (βραχίονας `base092`: upright SURF + καθοδηγούμενη αντιστοίχιση, δύο αρχές, εφεδρεία εικόνας απόστασης, σ = 2.0)· η έκδοση του 29/9 (`surftworangefb`,
-  ablation #081, `docs/results_ablation_081.md`) είναι η προηγούμενη. **Υποψήφιες για το RA-L (5/10, απόφαση εκκρεμεί):** Β `--cv-blend=adaptive --cv-blend-use=deskew` (`bd137`), Γ Β + `--fallback=kiss --fallback-after=4` (`bfc150`).
-  Συνολικός πίνακας: `docs/results_summary_162.md` (`scripts/summary_table_162.py`).
+  ablation #081, `docs/ablations.md`) είναι η προηγούμενη. **Υποψήφιες για το RA-L (5/10, απόφαση εκκρεμεί):** Β `--cv-blend=adaptive --cv-blend-use=deskew` (`bd137`), Γ Β + `--fallback=kiss --fallback-after=4` (`bfc150`).
+  Συνολικός πίνακας: `docs/results.md` (`scripts/summary_table_162.py`).
   Runs από 29/9 στον εξωτερικό SSD (exFAT, `~/kiss_runs_ssd`, χωρίς symbolic links): `results_table.py --runs=/home/photogrammetry/kiss_runs_ssd`.
 - **Επιλογές, όχι προεπιλογή (ΑΠΟΦΑΣΗ Μ.Τ. 28/9):** εικόνα απόστασης ως εφεδρεία (`--range=fallback`, #069/#071· μέρος της μεθόδου του paper) και βάρος στροφής του γράφου
   (`--rotation-weight=100`, #067/#070)· βραχίονες `surftworangefb`, `*rw` στο `results_table.py --all-arms`.
