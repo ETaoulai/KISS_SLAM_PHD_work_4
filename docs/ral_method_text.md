@@ -88,7 +88,18 @@ KLT (on par with SURF), upright ORB (promising in one seed, open), a cubic motio
 (every match spans a full sweep, so a sub-panorama does not resolve the motion within the sweep), and MAGSAC++, GNC-TLS and two-model fitting in place of
 RANSAC (same trajectories, slower: RANSAC stops early on 300-1100 pairs and the time fit after it is already robust). Across 38 ground truths the motion
 over one sweep is never constant-velocity; angular acceleration (our model) is the right minimum for handheld data (#233).
-Evaluation set: 13 Oxford Spires sequences with ground truth (7 added 8/10: C vs KISS-SLAM APE x0.20, RTE x0.32, #229).
+Evaluation set: 13 Oxford Spires sequences with ground truth (7 added 8/10: C vs KISS-SLAM APE x0.20, RTE x0.32, #229); Hilti 2021 (all 12) and 2022 (all 16)
+with the challenge's official protocols (#238-#240).
+
+## Hilti (for the results section; #239 / #240, official protocols)
+
+Hilti 2022 (hand-held Hesai XT-32, construction sites, stairs, corridors, cupolas): KISS-SLAM drifts 1-124 m; C reduces the error 2-12x and is better on 15 of 16
+(geometric mean x0.37). Against the other LiDAR-only methods (authors' configurations, one run each) C has the lowest geometric-mean APE on the 13 sequences all methods
+complete (1.90 m; MAD-ICP 1.93, GenZ-ICP 2.36, KISS-SLAM 4.9, CT-ICP 7.75) and the best mean rank (tied with MAD-ICP), and it is the only one that never collapses;
+MAD-ICP and GenZ-ICP win more single sequences (GenZ-ICP 5 cm on the corridors exp07 / exp14) but fail elsewhere (MAD-ICP 19.7 m on exp01 and a crash on exp23, GenZ-ICP
+2.7 km on exp09 and two out-of-memory runs); Traj-LO diverges with its authors' Hesai configuration. All LiDAR-only methods stay at metres - the challenge score
+(points below 10 cm) is ~0 except exp01. Hilti 2021 (Ouster): where the geometry suffices every method reaches 4-8 cm; GenZ-ICP and Traj-LO are best (0.15 m geometric
+mean), C 0.20, KISS-SLAM 0.37.
 
 ## Limits (to state in the paper)
 
@@ -98,5 +109,6 @@ Evaluation set: 13 Oxford Spires sequences with ground truth (7 added 8/10: C vs
   configuration (blend also for the ICP start + translation trigger, an option) recovers Riverside01 (3.6 %, = KISS-SLAM) but Sejong01 stays behind KISS-SLAM (5.4 / 4.3 %, #223): one 22 s stretch where a confidently wrong (stuck) image
   translation meets along-track degenerate geometry and the blended start loses speed scan after scan (#227; open).
 - On the Boreas drives our odometry beats KISS-SLAM, MAD-ICP and GenZ-ICP but CT-ICP drifts less (RTE 0.37 / 0.40 %); after loop closures KISS-SLAM keeps the lower APE (#225).
+- Hilti 2022: robust but not accurate - metres where LiDAR + IMU systems reach centimetres; GenZ-ICP is much better in long corridors (#240).
 - Height drift on long trajectories (#060, #077, #153; on Boreas a ~+0.1° beam-elevation calibration bias common to all methods, #219 / #221), the stair case (#063), and sensors whose intensity image is sparse (Livox, #095–#116; the
   16-beam NTU Ouster where the image fails at altitude) remain limits.

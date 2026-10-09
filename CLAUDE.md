@@ -5,11 +5,11 @@
 **Διάβασε ΠΡΩΤΑ το [`docs/STATUS.md`](docs/STATUS.md)**: τι ξέρουμε (συμπεράσματα με
 ημερομηνία), πού στοχεύουμε, τι είναι κλειστό, και λεξιλόγιο. Είναι η σύντομη εικόνα του έργου.
 
-Σύνοψη της πορείας για τον Μ.Τ. (19/9, ενημερωμένη 21/9, 25/9, 29/9 — §7δ — και 8/10 — §7ζ): [`docs/summary_for_MT.md`](docs/summary_for_MT.md).
+Σύνοψη της πορείας για τον Μ.Τ. (19/9, ενημερωμένη 21/9, 25/9, 29/9 — §7δ — και 9/10 — §7ζ): [`docs/summary_for_MT.md`](docs/summary_for_MT.md).
 Το §7β της σύνοψης έχει τα νεότερα ευρήματα (#033–#039) — **πρώτο απ' όλα: το ATE ενός run δεν είναι μετρήσιμο
 μέγεθος** (σ = 0.02–0.04 m), οπότε κάθε σύγκριση γίνεται με RPE/μήκος διαδρομής ή με 4+ runs.
 
-**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 7/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
+**Εκκρεμότητες και ανοιχτά προβλήματα (29/9, ενημερώσεις ως 9/10): [`docs/open_tasks.md`](docs/open_tasks.md)** — από εκεί ξεκινά η επόμενη δουλειά.
 
 **Η μέθοδος αναλυτικά (εξισώσεις, κάθε επιλογή με την εγγραφή της): [`docs/method_description.md`](docs/method_description.md).** Ερώτημα
 θεωρητικής αξιολόγησης για ειδικό: [`docs/review_prompt_registration_deskew.md`](docs/review_prompt_registration_deskew.md).
@@ -91,8 +91,9 @@ log. Ένα σημείο ανά είδος πληροφορίας — μην α�
 - `baselines/` + `scripts/run_baseline.py` / `lio_to_tum.py` / `extract_lio_topics.py` — οι άλλες μέθοδοι της σύγκρισης (#083: GenZ-ICP, MAD-ICP,
   CT-ICP, Traj-LO, FAST-LIO2, COIN-LIO), με pinned commits και patches· `baselines/README.md`.
 - `scripts/evaluate_hilti.py` — επίσημο πρωτόκολλο του Hilti SLAM Challenge 2021 (τροχιά IMU, pole/prism/imu, 1 s, SE(3), APE)· `docs/datasets.md`.
+- `scripts/evaluate_hilti2022.py` — επίσημο πρωτόκολλο του 2022 (άκρη μέτρησης και για τα `_imu_3dof`, 2 s, SE(3), APE, σκορ 0–100)· `scripts/hilti_table.py` — όλο το Hilti, κάθε έτος με το πρωτόκολλό του (#238–#240).
 - `scripts/evaluate_ntu.py` — επίσημο πρωτόκολλο του NTU VIRAL (σώμα + πρίσμα 0.40 m, 0.05 s, SE(3), ATE, πληρότητα)· `docs/datasets.md`. Δέχεται και την παλιά μορφή βαθμονόμησης (rtp / tnp / spms).
-- **Λίστα ακολουθιών:** `kiss_runs/all_seqs.tsv` = 42 (27 + 15 νέες NTU, 4/10)· οι 27 στο `all_seqs_27.tsv`· Boreas (όχημα) χωριστά (`--last=3000 --intensity-scale=1.0`)· από 7/10 και 8 πλήρεις Boreas + 4 MulRan (`docs/datasets.md`, log #216 / #223 / #225)· από 8/10 και 7 νέες Spires με GT στο `kiss_runs/spires_new.tsv` (εξωτερικός SSD).
+- **Λίστα ακολουθιών:** `kiss_runs/all_seqs.tsv` = 42 (27 + 15 νέες NTU, 4/10)· οι 27 στο `all_seqs_27.tsv`· Boreas (όχημα) χωριστά (`--last=3000 --intensity-scale=1.0`)· από 7/10 και 8 πλήρεις Boreas + 4 MulRan (`docs/datasets.md`, log #216 / #223 / #225)· από 8/10 και 7 νέες Spires με GT στο `kiss_runs/spires_new.tsv` (εξωτερικός SSD)· από 9/10 Hilti 2021 (6 νέες) + 2022 (16) στο `kiss_runs/hilti_new.tsv`.
 - **Επιλογές της μεθόδου από 3/10** (`run_ncd.py`, όλες εκτός προεπιλογής): `--cv-blend=adaptive [--cv-blend-use=deskew|both] [--cv-blend-part=rotation]` (#131/#137), `--fallback=kiss [--fallback-after=N]`
   (#146/#150), `--multi-baseline[=translation]` (#130/#131), `--fuse-range[=weak]` (#132/#152), `--drop-stationary` (#132), `--sectors=8 [--sectors-part=rotation]` (#093/#135), `--cv-winner-deskew` (#163).
 - Διαγνωστικά offline (#126–#131): `scripts/score_motion_gyro.py`, `score_blend_gyro.py`, `analyse_gated_deskew.py`, `analyse_degenerate_image.py`, `analyse_icp_failure_detector.py`,
