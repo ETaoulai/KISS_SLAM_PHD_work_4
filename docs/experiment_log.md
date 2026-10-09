@@ -579,6 +579,68 @@ SIFT και RoMa. Υπάρχει αυτοβαθμονομούμενη διόρθ
 
 ---
 
+### 2026-10-09 — #239 Hilti 2021 (6 νέες) + 2022 (όλες οι 16), επίσημα πρωτόκολλα: η Γ καλύτερη από KISS-SLAM σε 15 / 16 του 2022 (APE ×0.37), ισοπαλία στο 2021 όπου η γεωμετρία είναι καλή
+
+**Σχετικά:** #238 (λήψη, `evaluate_hilti2022.py`), `docs/datasets.md` §Hilti · έγκριση Μ.Τ. 9/10 («ναι σε όλα»: στάδια 1 → 2 → 3) · κλάδος `matching_intensities` (Γ αμετάβλητη) · `kiss_runs/q222/run239.sh 1|2|3`
+(`ral239` = Γ × 4 σπόροι, `kiss239` = KISS-SLAM s0, `kiss_runs/hilti_new.tsv`) · `scripts/hilti_table.py --out=kiss_runs/hilti_239` · 110 / 110 runs χωρίς αποτυχία
+· 2021: `evaluate_hilti.py` (αντιστοίχιση 1 s, prism / pole)· 2022: `evaluate_hilti2022.py` (άκρη μέτρησης, 2 s, SE(3), σκορ 0–100 ανά ακολουθία, πυκνό IMU για exp14 / 16 / 18 στη στήλη «dense»)
+· στάδιο 1 (exp07) ελέγχθηκε η αλυσίδα: αποστάσεις ανάμεσα στα σημεία ελέγχου σωστές (exp21: 17.81 / 38.40 / 37.51 / 5.15 m, GT 17.78 / 38.10 / 37.15 / 5.60), χρόνοι ακριβείς (< 0.05 s)
+
+| year | sequence | arm | runs | APE rmse m | score /100 | completeness | dense IMU rmse m |
+|---|---|---|---|---|---|---|---|
+| 2021 | Basement_3 | kiss239 | 1 | 0.076 ± 0.000 | nan | 1.00 | nan |
+| 2021 | Basement_3 | ral239 | 4 | 0.083 ± 0.002 | nan | 1.00 | nan |
+| 2021 | Basement_4 | kiss239 | 1 | 0.072 ± 0.000 | nan | 1.00 | nan |
+| 2021 | Basement_4 | ral239 | 4 | 0.079 ± 0.008 | nan | 1.00 | nan |
+| 2021 | Campus_1 | kiss239 | 1 | 0.080 ± 0.000 | nan | 1.00 | nan |
+| 2021 | Campus_1 | ral239 | 4 | 0.062 ± 0.006 | nan | 1.00 | nan |
+| 2021 | Campus_2 | kiss239 | 1 | 0.054 ± 0.000 | nan | 1.00 | nan |
+| 2021 | Campus_2 | ral239 | 4 | 0.054 ± 0.003 | nan | 1.00 | nan |
+| 2021 | Construction_Site_2 | kiss239 | 1 | 2.652 ± 0.000 | nan | 1.00 | nan |
+| 2021 | Construction_Site_2 | ral239 | 4 | 0.096 ± 0.010 | nan | 1.00 | nan |
+| 2021 | Parking_1 | kiss239 | 1 | 43.160 ± 0.000 | nan | 1.00 | nan |
+| 2021 | Parking_1 | ral239 | 4 | 29.094 ± 8.712 | nan | 1.00 | nan |
+| 2022 | exp01_construction_ground_level | kiss239 | 1 | 0.035 ± 0.000 | 41.5 | 1.00 | nan |
+| 2022 | exp01_construction_ground_level | ral239 | 4 | 0.030 ± 0.004 | 52.3 | 1.00 | nan |
+| 2022 | exp02_construction_multilevel | kiss239 | 1 | 28.856 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp02_construction_multilevel | ral239 | 4 | 6.962 ± 2.230 | 0.0 | 1.00 | nan |
+| 2022 | exp03_construction_stairs | kiss239 | 1 | 9.739 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp03_construction_stairs | ral239 | 4 | 4.501 ± 0.802 | 0.0 | 1.00 | nan |
+| 2022 | exp04_construction_upper_level | kiss239 | 1 | 1.759 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp04_construction_upper_level | ral239 | 4 | 1.455 ± 0.329 | 0.0 | 1.00 | nan |
+| 2022 | exp05_construction_upper_level_2 | kiss239 | 1 | 0.701 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp05_construction_upper_level_2 | ral239 | 4 | 0.802 ± 0.525 | 10.0 | 1.00 | nan |
+| 2022 | exp06_construction_upper_level_3 | kiss239 | 1 | 8.189 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp06_construction_upper_level_3 | ral239 | 4 | 4.612 ± 1.613 | 0.0 | 1.00 | nan |
+| 2022 | exp07_long_corridor | kiss239 | 1 | 40.518 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp07_long_corridor | ral239 | 4 | 3.130 ± 1.403 | 0.0 | 1.00 | nan |
+| 2022 | exp09_cupola | kiss239 | 1 | 56.556 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp09_cupola | ral239 | 4 | 8.454 ± 0.905 | 0.0 | 1.00 | nan |
+| 2022 | exp10_cupola_2 | kiss239 | 1 | 124.385 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp10_cupola_2 | ral239 | 4 | 10.300 ± 1.083 | 0.0 | 1.00 | nan |
+| 2022 | exp11_lower_gallery | kiss239 | 1 | 6.933 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp11_lower_gallery | ral239 | 4 | 2.069 ± 0.320 | 0.0 | 1.00 | nan |
+| 2022 | exp14_basement_2 | kiss239 | 1 | 3.672 ± 0.000 | 0.0 | 1.00 | 3.380 |
+| 2022 | exp14_basement_2 | ral239 | 4 | 1.913 ± 0.373 | 0.0 | 1.00 | 1.629 |
+| 2022 | exp15_attic_to_upper_gallery | kiss239 | 1 | 7.121 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp15_attic_to_upper_gallery | ral239 | 4 | 4.370 ± 0.583 | 0.0 | 1.00 | nan |
+| 2022 | exp16_attic_to_upper_gallery_2 | kiss239 | 1 | 8.448 ± 0.000 | 0.0 | 1.00 | 11.362 |
+| 2022 | exp16_attic_to_upper_gallery_2 | ral239 | 4 | 5.496 ± 0.410 | 0.0 | 1.00 | 4.751 |
+| 2022 | exp18_corridor_lower_gallery_2 | kiss239 | 1 | 3.339 ± 0.000 | 0.0 | 1.00 | 6.083 |
+| 2022 | exp18_corridor_lower_gallery_2 | ral239 | 4 | 3.228 ± 1.164 | 0.0 | 1.00 | 1.220 |
+| 2022 | exp21_outside_building | kiss239 | 1 | 1.524 ± 0.000 | 0.0 | 1.00 | nan |
+| 2022 | exp21_outside_building | ral239 | 4 | 0.326 ± 0.082 | 0.5 | 1.00 | nan |
+| 2022 | exp23_the_sheldonian_slam | kiss239 | 1 | 81.281 ± 0.000 | 0.0 | 0.94 | nan |
+| 2022 | exp23_the_sheldonian_slam | ral239 | 4 | 17.144 ± 4.105 | 0.0 | 0.94 | nan |
+
+Γεωμετρικός μέσος APE Γ / KISS-SLAM: **2022 ×0.37 (καλύτερη σε 15 / 16)**, 2021 ×0.53 (3 / 6: ισοπαλία στα Basement_3 / 4, Campus_2 — 5–8 cm και οι δύο· Construction_Site_2 0.10 / 2.65 m).
+
+**Συμπέρασμα ⏳:** στο Hilti 2022 (φορητό Hesai XT-32, εργοτάξια, σκάλες, διάδρομοι, θόλοι) ο KISS-SLAM αποτυγχάνει σχεδόν παντού (1–124 m) και η Γ μειώνει το σφάλμα 2–12× — αλλά μένει σε μέτρα· το σκορ
+της πρόκλησης (σημεία < 10 cm) είναι ~0 εκτός exp01 (52 / 41.5) γιατί οι αναφορές του είναι LiDAR + IMU. Στο 2021 όπου η γεωμετρία είναι επαρκής και οι δύο φτάνουν 5–8 cm (Γ λίγο χειρότερη στα
+Basement, +10 %, ~1σ)· το Parking_1 αποτυγχάνει και για τις δύο. Για το paper: Hilti = σύνολο όπου το LiDAR-only γενικά αποτυγχάνει — η Γ το βελτιώνει σταθερά, δεν το λύνει.
+
+---
+
 ### 2026-10-08 — #236 Εναλλακτικές του RANSAC σε ολόκληρη ακολουθία (Sejong01): MAGSAC++, GNC-TLS, δύο μοντέλα — όλες = RANSAC· κανένα ταχύτερο
 
 **Σχετικά:** #235, #227 (η στάση του Sejong01) · κλάδος `matching_intensities` · `run_ncd.py --robust=magsac|gnc|multi` (`kiss_slam/intensity_deskew.py`: `magsac`, `gnc` — GNC-TLS των Yang et al. 2020, σταθμισμένος Kabsch σε
