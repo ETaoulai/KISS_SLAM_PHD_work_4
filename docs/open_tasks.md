@@ -173,7 +173,7 @@ experiment» — όχι συστηματικό· τυχαίος περίπατο
 
 - **Δεδομένα:** `Extreme SSD/hilti_2021/` (6 νέες) + `kiss_data/hilti_2021/` (6 παλιές), `Extreme SSD/hilti_2022/` (16)· λίστα `kiss_runs/hilti_new.tsv` (22)· `docs/datasets.md` §Hilti.
 - **Αξιολόγηση:** 2021 `scripts/evaluate_hilti.py`, 2022 `scripts/evaluate_hilti2022.py` (επίσημο, ελεγμένο ως 1e-9)· όλος ο πίνακας `scripts/hilti_table.py --arms=kiss239,ral239,cticp240,genz240,mad240,trajlo240`.
-- **Έγινε:** Γ × 4 + KISS-SLAM (#239), CT-ICP / GenZ / MAD / Traj-LO (#240).
+- **Έγινε:** Γ × 4 + KISS-SLAM (#239), CT-ICP / GenZ / MAD / Traj-LO (#240), οι 6 παλιές του 2021 με όλους (#241) — πίνακας 12 / 12 + 16 / 16: `kiss_runs/hilti_241.md`.
 - **ΑΠΟΦΑΣΕΙΣ Μ.Τ. 9/10:** (1) Traj-LO **όχι** άλλη ρύθμιση — αναφέρεται με τη δημοσιευμένη (`config_hesai`) και την απόκλισή της· (2) οι 6 παλιές του 2021 με τους ίδιους βραχίονες (Γ × 4, KISS-SLAM, CT-ICP,
   GenZ-ICP, MAD-ICP, Traj-LO) για ενιαίο πίνακα 12 / 12 — **έγινε (#241)**: Γ τρίτη (0.136 m) πίσω από GenZ-ICP (0.102) / Traj-LO κατά βαθμό.
 - **ΠΡΕΠΕΙ ΝΑ ΓΙΝΕΙ (ΑΠΟΦΑΣΗ Μ.Τ. 9/10):** GenZ-ICP — γιατί τόσο καλό στους διαδρόμους (exp07 / exp14 του Hilti 2022: 5 cm, η Γ 2–3 m)· τι από τον μηχανισμό του (προσαρμοστικό βάρος point-to-plane / point-to-point
